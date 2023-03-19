@@ -76,7 +76,32 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
     string[]@ tokens = textIn.split(" ");
     int tl = tokens.length;
     if (tl > 0) {
-        if ( player.isMod() && tokens[0] == "!captains" && tl >= 3) {
+        // Waffle: Add team commands
+        if (player.isMod() && tl >= 2 && (tokens[0] == "!blue" || tokens[0] == "!red" || tokens[0] == "!spec" || tokens[0] == "!spectator"))
+        {
+            // Try to get player
+            CPlayer@ target = GetPlayerByIdent(tokens[1]);
+            if (target is null)
+            {
+                return true;
+            }
+            
+            // Set player to respective team
+            RulesCore@ core;
+            this.get("core", @core);
+
+            int team = this.getSpectatorTeamNum();
+            if (tokens[0] == "!blue")
+            {
+                team = TEAM_BLUE;
+            }
+            else if (tokens[0] == "!red")
+            {
+                team = TEAM_RED;
+            }
+            core.ChangePlayerTeam(player, team);
+        }
+        else if ( player.isMod() && tokens[0] == "!captains" && tl >= 3) {
             CPlayer@ captain_blue = GetPlayerByIdent(tokens[1]);
             CPlayer@ captain_red  = GetPlayerByIdent(tokens[2]);
             if (captain_blue is null || captain_red is null) {
