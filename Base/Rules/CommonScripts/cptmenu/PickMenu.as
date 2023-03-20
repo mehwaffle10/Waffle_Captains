@@ -32,8 +32,7 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 
 void onTick(CRules@ this)
 {
-	
-	if (picked || !this.get_bool("pick phase") || localUsername != captGrab(this, this.get_u8("team picking")))
+	if (picked || this.get_u8(state) != State::pick || getPlayerByUsername(localUsername) !is get_captain(this, this.get_u8(picking)))
 	{
 		playerHovered = false;
 		this.RemoveScript(getCurrentScriptName()); // this just ain't it no more

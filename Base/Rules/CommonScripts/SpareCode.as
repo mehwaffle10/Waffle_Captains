@@ -1,5 +1,20 @@
 #include "Logging.as";
 
+namespace State
+{
+	enum state_type
+	{
+		none = 0,
+		fight,
+		pick
+	};
+};
+
+const string state = "captains state";
+const string first_pick = "captains first pick";
+const string picking = "captains currently picking";
+const string timer = "captains timer";
+
 int[] playerNumlist( CRules@ this){
 
     int[] orders;
@@ -11,27 +26,9 @@ int[] playerNumlist( CRules@ this){
     return orders;
 }
 
-void lockteams( CRules@ this )
+CPlayer@ get_captain(CRules@ this, int team)
 {
-	if (isServer()){	
-		if (this.get_bool("can choose team"))
-		{
-			this.set_bool("can choose team", false);
-			this.Sync("can choose team", true);
-			getNet().server_SendMsg( "swapping teams is disabled!" );
-		}
-		else
-		{
-			this.set_bool("can choose team", true);
-			this.Sync("can choose team", true);
-			getNet().server_SendMsg( "swapping teams is enabled!" );
-		}
-	}
-}
-
-shared string captGrab(CRules@ this, int team){
-	string stringName = "captain " + (team == 0 ? "blue" : "red");
-	return this.get_string(stringName);
+	return getPlayerByUsername(this.get_string(team == 0 ? "captain blue" : "captain red"));
 }
 
 shared string[] teamGrab(CRules@ this, int team){
