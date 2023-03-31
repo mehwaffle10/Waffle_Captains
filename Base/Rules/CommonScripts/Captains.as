@@ -1,6 +1,7 @@
+
 #include "Logging.as";
 #include "CTF_SharedClasses.as";
-#include "SpareCode.as";
+#include "CaptainsCommon.as";
 
 const int TEAM_BLUE = 0;
 const int TEAM_RED  = 1;
@@ -27,7 +28,7 @@ void onRestart(CRules@ this)
 
 void onTick(CRules@ this)
 {
-    if (getNet().isServer() && this.get_u8(state) == State::fight && this.get_s32(timer) != 0)
+    if (isServer() && this.get_u8(state) == State::fight && this.get_s32(timer) != 0)
     {
         s32 time_left = this.get_s32(timer) - getGameTime();
         if (time_left <= 0) {
@@ -78,7 +79,7 @@ void onRender(CRules@ this)
 
 bool onServerProcessChat(CRules@ this, const string &in textIn, string &out textOut, CPlayer@ player)
 {
-    if(!getNet().isServer() || player is null) return true;
+    if(!isServer() || player is null) return true;
 
     string[]@ tokens = textIn.split(" ");
     int tl = tokens.length;
@@ -114,11 +115,18 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
                 log("onServerProcessChat", "One of the given captain names was invalid.");
                 return true;
             }
-            StartFightPhase(this, captain_blue, captain_red);
-        }
-        else if (player.isMod() && tokens[0] == "!randompick")
-        {
-            StartPickPhase(this, XORRandom(2));
+            this.set_string("captain blue", captain_blue.getUsername());
+            this.Sync("captain blue", true);
+            this.set_string("captain red", captain_red.getUsername());
+            this.Sync("captain red", true);
+            if (tl > 3 && (tokens[3] == "blue" || tokens[3] == "red" || tokens[3] == "random"))
+            {
+                StartPickPhase(this, tokens[3] == "blue" ? TEAM_BLUE : tokens[3] == "red" ? TEAM_RED : XORRandom(2));
+            }
+            else
+            {
+                StartFightPhase(this, captain_blue, captain_red);
+            }
         }
         else if (tokens[0] == "!pick" && tl >= 2 && this.get_u8(state) == State::pick)
         {
@@ -134,12 +142,13 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
             {
                 string targetIdent = tokens[1];
                 CPlayer@ target = GetPlayerByIdent(targetIdent);
-                if (target !is null) {
+                if (target !is null)
+                {
                     TryPickPlayer(this, target, team_picking);
                 }
             }
         }
-        else if(tokens[0] == "!forfeit" && (player is get_captain(this, TEAM_BLUE) || player is get_captain(this, TEAM_RED)))
+        else if(tokens[0] == "!forfeit" && this.get_u8(state) == State::fight && (player is get_captain(this, TEAM_BLUE) || player is get_captain(this, TEAM_RED)))
         {
             StartPickPhase(this, Maths::Abs(player.getTeamNum() - 1));
         }
@@ -173,6 +182,21 @@ void TryPickPlayer(CRules@ this, CPlayer@ player, u8 team)
     if (player.getTeamNum() == this.getSpectatorTeamNum()) // Don't allow picking of players already on teams
     {
         ChangePlayerTeam(this, player, team);
+
+        // End picking phase
+        if (getPlayerCount() == 0 || CountPlayersInTeam(this.getSpectatorTeamNum()) == 0)
+        {
+            this.set_u8(state, State::none);
+            this.Sync(state, true);
+            return;
+        }
+
+        // Set the team that's picking
+        u8 first_pick_team = this.get_u8(first_pick);
+        u8 current_pick = this.get_u8(picking);
+        u8 current_count = CountPlayersInTeam(current_pick);
+
+        sendPickMenu(this, current_count == 2 && current_pick != first_pick_team ? current_pick : Maths::Abs(current_pick - 1));
     }
 }
 
@@ -183,48 +207,11 @@ void ChangePlayerTeam(CRules@ this, CPlayer@ player, int team)
     core.ChangePlayerTeam(player, team);
 }
 
-void StartPickPhase(CRules@ this, u8 first_pick_team)
-{
-    getNet().server_SendMsg("Entering pick phase. First pick: " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red"));
-
-    this.set_u8(state, State::pick);
-    this.Sync(state, true);
-
-    this.set_u8(first_pick, first_pick_team);
-    this.Sync(first_pick, true);
-
-    sendPickMenu(this, first_pick_team);
-}
-
 void StartFightPhase(CRules@ this, CPlayer@ captain_blue, CPlayer@ captain_red)
 {
     getNet().server_SendMsg("Entering fight phase");
 
-    // Set all relevant teams in one go
-    RulesCore@ core;
-    this.get("core", @core);
-    int specTeam = this.getSpectatorTeamNum();
-
-    for(int i = 0; i < getPlayerCount(); i++)
-    {
-        CPlayer@ player = getPlayer(i);
-        if (player is captain_blue)
-        {
-            core.ChangePlayerTeam(player, TEAM_BLUE);
-            this.set_string("captain blue", player.getUsername());
-            this.Sync("captain blue", true);
-        }
-        else if (player is captain_red)
-        {
-            core.ChangePlayerTeam(player, TEAM_RED);
-            this.set_string("captain red", player.getUsername());
-            this.Sync("captain red", true);
-        }
-        else
-        {
-            core.ChangePlayerTeam(player, specTeam);
-        }
-    }
+    SetTeams(this);
 
     this.set_u8(state, State::fight);
     this.Sync(state, true);
@@ -236,69 +223,78 @@ void StartFightPhase(CRules@ this, CPlayer@ captain_blue, CPlayer@ captain_red)
     getNet().server_SendMsg("Swapping teams is disabled!");
 }
 
-void onPlayerDie(CRules@ this, CPlayer@ victim, CPlayer@ killer, u8 customData)
+void StartPickPhase(CRules@ this, u8 first_pick_team)
 {
-    if (this.get_u8(state) == State::fight && this.get_s32(timer) == 0 && killer !is null)
-    {
-        if(getNet().isServer())
-        {
-            u8 winning_team = Maths::Abs(victim.getTeamNum() - 1);
-            StartPickPhase(this, winning_team);
+    getNet().server_SendMsg("Entering pick phase. First pick: " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red"));
 
-            CPlayer@ winner = get_captain(this, winning_team);
-            getNet().server_SendMsg((winner !is null ? winner.getUsername() : killer.getUsername()) + " won the fight!");
+    SetTeams(this);
+
+    this.set_u8(state, State::pick);
+    this.Sync(state, true);
+
+    this.set_u8(first_pick, first_pick_team);
+    this.Sync(first_pick, true);
+
+    sendPickMenu(this, first_pick_team);
+}
+
+void SetTeams(CRules@ this)
+{
+    // Set all relevant teams in one go
+    RulesCore@ core;
+    this.get("core", @core);
+    int specTeam = this.getSpectatorTeamNum();
+    CPlayer@ captain_blue = get_captain(this, TEAM_BLUE);
+    CPlayer@ captain_red  = get_captain(this, TEAM_RED);
+
+    for(int i = 0; i < getPlayerCount(); i++)
+    {
+        CPlayer@ player = getPlayer(i);
+        if (player !is null)
+        {
+            core.ChangePlayerTeam(player, player is captain_blue ? TEAM_BLUE : player is captain_red ? TEAM_RED : specTeam);
+        }
+    }
+
+    // Force drop flags
+    CBlob@[] flags;
+    getBlobsByName("ctf_flag", flags);
+    for (u8 i = 0; i < flags.length; i++)
+    {
+        CBlob@ flag = flags[i];
+        if (flag !is null && flag.isAttachedToPoint("PICKUP"))
+        {
+            flag.server_DetachFromAll();
         }
     }
 }
 
-void onPlayerChangedTeam(CRules@ this, CPlayer@ player, u8 oldteam, u8 newteam)
+void onPlayerDie(CRules@ this, CPlayer@ victim, CPlayer@ killer, u8 customData)
 {
-    if (this.get_u8(state) == State::pick) // changed from Ontick to changeteam hook
+    if (isServer() && this.get_u8(state) == State::fight && this.get_s32(timer) == 0 && killer !is null)
     {
-        // End picking phase
-        if (getPlayerCount() == 0 || CountPlayersInTeam(this.getSpectatorTeamNum()) == 0)
-        {
-            this.set_u8(state, State::none);
-            return;
-        }
+        u8 winning_team = Maths::Abs(victim.getTeamNum() - 1);
+        StartPickPhase(this, winning_team);
 
-        if (!isServer())
-        {
-            return;
-        }
-
-        // Set the team that's picking
-        u8 first_pick_team = this.get_u8(first_pick);
-        u8 current_pick = this.get_u8(picking);
-        u8 current_count = CountPlayersInTeam(current_pick);
-
-        sendPickMenu(this, current_count == 0 && current_pick != first_pick_team ? current_pick : Maths::Abs(current_pick - 1));
+        CPlayer@ winner = get_captain(this, winning_team);
+        getNet().server_SendMsg((winner !is null ? winner.getUsername() : killer.getUsername()) + " won the fight!");
     }
 }
 
 void onCommand(CRules@ this, u8 cmd, CBitStream @params)
 {
-    if (!isServer())
+    if (isServer() && cmd == this.getCommandID("pick"))
     {
-        return;
-    }
-
-    if (cmd == this.getCommandID("pick"))
-    {
-        if (getNet().isServer())
+        string username = params.read_string();
+        CPlayer@ player = getPlayerByUsername(username);
+        if (player !is null)
         {
-            string username = params.read_string();
-            CPlayer@ player = getPlayerByUsername(username);
-            if (player !is null)
-            {
-                TryPickPlayer(this, player, this.get_u8(picking));
-            }
+            TryPickPlayer(this, player, this.get_u8(picking));
         }
     }
-    else if (cmd == this.getCommandID("show pick menu")) // WARNING: only send to individual players
+    else if (isClient() && cmd == this.getCommandID("show pick menu")) // WARNING: only send to individual players
     {
-	    print("create pick menu");
-        this.AddScript("PickMenu");
+        this.AddScript("PickMenu.as");
     }
 }
 
@@ -313,9 +309,5 @@ void sendPickMenu(CRules@ this, u8 team)
 
     this.set_u8(picking, team);
     this.Sync(picking, true);
-    
-    if (isServer())
-    {
-        this.SendCommand(this.getCommandID("show pick menu"), CBitStream(), picker);
-    }    
+    this.SendCommand(this.getCommandID("show pick menu"), CBitStream(), picker);
 }

@@ -1,15 +1,13 @@
 #define CLIENT_ONLY
 
 #include "KGUI.as";
-#include "SpareCode.as";
+#include "CaptainsCommon.as";
 
 const int buttonWidth = 100;
 const int buttonHeight = 50;
 const int gridColumns = 2;
 const Vec2f pickWindowPosition = Vec2f(100, 100); // top-left corner position
 Window pickWindow = Window(pickWindowPosition, Vec2f(0, 0));
-Button playerButton;
-bool playerHovered = false;
 string localUsername;
 bool picked;
 
@@ -34,7 +32,6 @@ void onTick(CRules@ this)
 {
 	if (picked || this.get_u8(state) != State::pick || getPlayerByUsername(localUsername) !is get_captain(this, this.get_u8(picking)))
 	{
-		playerHovered = false;
 		this.RemoveScript(getCurrentScriptName()); // this just ain't it no more
 	}
 }
@@ -44,15 +41,8 @@ void onRender(CRules@ this)
 	if (!picked)
 	{
 		pickWindow.draw();
-
-		if(playerHovered){
-			if (playerButton !is null){//need to add strings to display
-				//drawStatCard(getPlayerByUsername(playerButton.desc), playerButton.position);
-			}
-		}
 	}
 }
-
 
 void updatePickWindow()
 {
@@ -87,7 +77,6 @@ void updatePickWindow()
 		);
 		
 		button.addClickListener(button_onClick);
-		button.addHoverStateListener(button_onHover);
 		pickWindow.addChild(button);
 	}
 }
@@ -107,26 +96,4 @@ void button_onClick(int x, int y, int mouseButton, IGUIItem@ source)
 		// our work here is done
 		picked = true;
 	}
-}
-
-void button_onHover(bool isHovered, IGUIItem@ source)
-{
-    // Cast this back into a label (since it inherits from IGuitItem)
-    Button@ button = cast<Button@>(source);
-
-    if (isHovered)
-    {
-    	print(isHovered + "" + playerHovered + "" + button.desc + "0");
-        playerButton = button;
-        print(isHovered + "" + playerHovered + "" + button.desc + "1");
-	playerHovered = true;
-
-
-    }
-    else{
-    	if (button.desc == playerButton.desc){
-		playerHovered = false;
-    		print(isHovered + "" + playerHovered + "" + button.desc + "2");
-    	}
-    }
 }

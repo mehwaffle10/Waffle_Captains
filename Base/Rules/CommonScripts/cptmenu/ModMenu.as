@@ -1,7 +1,7 @@
 #define CLIENT_ONLY
 
 #include "KGUI.as";
-#include "SpareCode.as";
+#include "CaptainsCommon.as";
 
 const Vec2f modWindowPosition = Vec2f(100, 100); // top-left corner position
 Window modWindow = Window(pickWindowPosition, Vec2f(0, 0));
