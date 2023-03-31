@@ -15,17 +15,22 @@ void onInit(CRules@ this)
 {
 	localUsername = getLocalPlayer().getUsername();
 	picked = false;
-	updatePickWindow();
+	updatePickWindow(null);
 }
 
 void onPlayerChangedTeam(CRules@ this, CPlayer@ player, u8 oldteam, u8 newteam)
 {
-	updatePickWindow();
+	updatePickWindow(player);
+}
+
+void onNewPlayerJoin(CRules@ this, CPlayer@ player)
+{
+	updatePickWindow(player);
 }
 
 void onPlayerLeave(CRules@ this, CPlayer@ player)
 {
-	updatePickWindow();
+	updatePickWindow(player);
 }
 
 void onTick(CRules@ this)
@@ -44,13 +49,13 @@ void onRender(CRules@ this)
 	}
 }
 
-void updatePickWindow()
+void updatePickWindow(CPlayer@ lost_player)
 {
 	string[] playerNames;
 	for (int i = 0; i < getPlayerCount(); i++)
 	{
 		CPlayer@ player = getPlayer(i);
-		if (player.getTeamNum() == getRules().getSpectatorTeamNum())
+		if (player !is null && player !is lost_player && player.getTeamNum() == getRules().getSpectatorTeamNum())
 		{
 			playerNames.push_back(player.getUsername());
 		}
