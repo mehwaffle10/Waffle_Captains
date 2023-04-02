@@ -48,7 +48,8 @@ CPlayer@ GetPlayerByIdent(string ident)
         }
     }
 
-    if (matches.length == 1) {
+    if (matches.length == 1)
+    {
         log("GetPlayerByIdent", "1 match found: " + matches[0].getUsername());
         return matches[0];
     }

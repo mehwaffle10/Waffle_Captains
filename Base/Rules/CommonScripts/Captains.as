@@ -1,7 +1,8 @@
 
-#include "Logging.as";
-#include "CTF_SharedClasses.as";
-#include "CaptainsCommon.as";
+#include "Logging.as"
+#include "CTF_SharedClasses.as"
+#include "CaptainsCommon.as"
+#include "KGUI.as"
 
 const int TEAM_BLUE = 0;
 const int TEAM_RED  = 1;
@@ -9,16 +10,23 @@ const int TEAM_RED  = 1;
 const SColor COLOR_BLUE(0xff0000ff);
 const SColor COLOR_RED(0xffff0000);
 
-void onInit(CRules@ this) {
+const int buttonWidth = 100;
+const int buttonHeight = 50;
+const int gridColumns = 2;
+Window pickWindow = Window(Vec2f(100, 100), Vec2f(0, 0));
+
+void onInit(CRules@ this)
+{
     CaptainsReset(this);
 
     this.addCommandID("pick");
-    this.addCommandID("show pick menu");
 
     if (!GUI::isFontLoaded("Bigger Font"))
     {
         GUI::LoadFont("Bigger Font", "GUI/Fonts/AveriaSerif-Bold.ttf", 30, true);
     }
+
+    updatePickWindow(null);
 }
 
 void onRestart(CRules@ this)
@@ -31,7 +39,8 @@ void onTick(CRules@ this)
     if (isServer() && this.get_u8(state) == State::fight && this.get_s32(timer) != 0)
     {
         s32 time_left = this.get_s32(timer) - getGameTime();
-        if (time_left <= 0) {
+        if (time_left <= 0)
+        {
             this.set_s32(timer, 0);
             this.Sync(timer, true);
 
@@ -41,29 +50,52 @@ void onTick(CRules@ this)
     }
 }
 
+void onPlayerChangedTeam(CRules@ this, CPlayer@ player, u8 oldteam, u8 newteam)
+{
+	updatePickWindow(null);
+}
+
+void onNewPlayerJoin(CRules@ this, CPlayer@ player)
+{
+	updatePickWindow(null);
+}
+
+void onPlayerLeave(CRules@ this, CPlayer@ player)
+{
+	updatePickWindow(player);
+}
+
 void onRender(CRules@ this)
 {
     if (this.get_u8(state) == State::pick && this.exists(picking))
     {
-        // Draw interface
         u8 team_picking = this.get_u8(picking);
-
-        Vec2f top_left(100,200);
-        Vec2f padding(4, 4);
-        Vec2f end_padding(6, 0);
-        string msg = (team_picking == TEAM_BLUE ? "Blue" : "Red") + " team is picking";
-        Vec2f textDims;
-        GUI::SetFont("menu");
-        GUI::GetTextDimensions(msg, textDims);
-        GUI::DrawPane(
-            top_left,
-            top_left + textDims + padding * 2 + end_padding
-        );
-        GUI::DrawText(
-            msg,
-            top_left + padding,
-            team_picking == TEAM_BLUE ? COLOR_BLUE : COLOR_RED
-        );
+        CPlayer@ captain = get_captain(this, team_picking);
+        if (captain !is null && getLocalPlayer() is captain)
+        {
+            // Draw pick menu
+            pickWindow.draw();
+        }
+        else
+        {
+            // Draw info card
+            Vec2f top_left(100,200);
+            Vec2f padding(6, 6);
+            Vec2f end_padding(6, 0);
+            string msg = (captain !is null ? captain.getUsername() : "Captain") + " is picking for " + (team_picking == TEAM_BLUE ? "blue" : "red") + " team";
+            Vec2f textDims;
+            GUI::SetFont("menu");
+            GUI::GetTextDimensions(msg, textDims);
+            GUI::DrawPane(
+                top_left,
+                top_left + textDims + padding * 2 + end_padding
+            );
+            GUI::DrawText(
+                msg,
+                top_left + padding,
+                team_picking == TEAM_BLUE ? COLOR_BLUE : COLOR_RED
+            );   
+        }
 	}
     else if (this.get_u8(state) == State::fight)
     {
@@ -193,10 +225,8 @@ void TryPickPlayer(CRules@ this, CPlayer@ player, u8 team)
 
         // Set the team that's picking
         u8 first_pick_team = this.get_u8(first_pick);
-        u8 current_pick = this.get_u8(picking);
-        u8 current_count = CountPlayersInTeam(current_pick);
-
-        sendPickMenu(this, current_count == 2 && current_pick != first_pick_team ? current_pick : Maths::Abs(current_pick - 1));
+        u8 current_count = CountPlayersInTeam(team);
+        setPicker(this, current_count == 2 && team != first_pick_team ? team : Maths::Abs(team - 1));
     }
 }
 
@@ -235,7 +265,7 @@ void StartPickPhase(CRules@ this, u8 first_pick_team)
     this.set_u8(first_pick, first_pick_team);
     this.Sync(first_pick, true);
 
-    sendPickMenu(this, first_pick_team);
+    setPicker(this, first_pick_team);
 }
 
 void SetTeams(CRules@ this)
@@ -292,22 +322,66 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
             TryPickPlayer(this, player, this.get_u8(picking));
         }
     }
-    else if (isClient() && cmd == this.getCommandID("show pick menu")) // WARNING: only send to individual players
-    {
-        this.AddScript("PickMenu.as");
-    }
 }
 
-void sendPickMenu(CRules@ this, u8 team)
+void setPicker(CRules@ this, u8 team)
 {
     CPlayer@ picker = get_captain(this, team);
     if (picker is null)
     {
         return;
     }
-    print("picker is: " + picker.getUsername());
 
     this.set_u8(picking, team);
     this.Sync(picking, true);
-    this.SendCommand(this.getCommandID("show pick menu"), CBitStream(), picker);
+}
+
+void updatePickWindow(CPlayer@ lost_player)
+{
+	string[] playerNames;
+	for (int i = 0; i < getPlayerCount(); i++)
+	{
+		CPlayer@ player = getPlayer(i);
+		if (player !is null && player !is lost_player && player.getTeamNum() == getRules().getSpectatorTeamNum())
+		{
+			playerNames.push_back(player.getUsername());
+		}
+	}
+
+	int buttonCount = playerNames.size();
+	int gridRows = (buttonCount - 1) / 2 + 1;
+	int windowWidth = gridColumns * buttonWidth;
+	int windowHeight = gridRows * buttonHeight;
+
+	pickWindow.size = Vec2f(windowWidth, windowHeight);
+	pickWindow.clearChildren();
+
+	for (int i = 0; i < buttonCount; i++)
+	{
+		int buttonX = (i % gridColumns) * buttonWidth;
+		int buttonY = (i / gridColumns) * buttonHeight;
+
+		Button button = Button(
+			Vec2f(buttonX, buttonY),
+			Vec2f(buttonWidth, buttonHeight),
+			playerNames[i],
+			SColor(255, 255, 255, 255)
+		);
+		
+		button.addClickListener(button_onClick);
+		pickWindow.addChild(button);
+	}
+}
+
+void button_onClick(int x, int y, int mouseButton, IGUIItem@ source)
+{
+	Button@ button = cast<Button@>(source);
+
+	if(mouseButton == 1) // only on left click
+	{
+		CBitStream params;
+		params.write_string(button.desc);
+		CRules@ rules = getRules();
+		rules.SendCommand(rules.getCommandID('pick'), params);
+	}
 }
