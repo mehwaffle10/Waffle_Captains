@@ -20,6 +20,7 @@ void onInit(CRules@ this)
     CaptainsReset(this);
 
     this.addCommandID("pick");
+    this.addCommandID(nopick_command);
 
     if (!GUI::isFontLoaded("Bigger Font"))
     {
@@ -52,6 +53,12 @@ void onTick(CRules@ this)
 
 void onPlayerChangedTeam(CRules@ this, CPlayer@ player, u8 oldteam, u8 newteam)
 {
+    // Untag if they join a team
+    if (newteam != this.getSpectatorTeamNum() && player !is null)
+    {
+        this.set_bool(player.getUsername() + nopick_tag, false);
+    }
+
 	updatePickWindow(null);
 }
 
@@ -184,6 +191,22 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
         {
             StartPickPhase(this, Maths::Abs(player.getTeamNum() - 1));
         }
+        else if (tokens[0] == "!nopick")
+        {
+            CPlayer@ target = player.isMod() && tl >= 2 ? GetPlayerByIdent(tokens[1]) : player;
+            if (target !is null)
+            {
+                // Tag the player
+                CBitStream params;
+                string player_tag = target.getUsername() + nopick_tag;
+                params.write_string(player_tag);
+                params.write_bool(!this.get_bool(player_tag));
+                this.SendCommand(this.getCommandID(nopick_command), params);
+
+                // Force spec
+                ChangePlayerTeam(this, target, this.getSpectatorTeamNum());
+            }
+        }
     }
     return true;
 }	
@@ -211,7 +234,7 @@ int CountPlayersInTeam(int teamNum)
 // Adds the player to the given team if they are currently spectating and can be picked
 void TryPickPlayer(CRules@ this, CPlayer@ player, u8 team)
 {
-    if (player.getTeamNum() == this.getSpectatorTeamNum()) // Don't allow picking of players already on teams
+    if (player.getTeamNum() == this.getSpectatorTeamNum() && !this.get_bool(player.getUsername() + nopick_tag)) // Don't allow picking of players already on teams or nopick players
     {
         ChangePlayerTeam(this, player, team);
 
@@ -234,6 +257,12 @@ void ChangePlayerTeam(CRules@ this, CPlayer@ player, int team)
 {
     RulesCore@ core;
     this.get("core", @core);
+
+    if (player is null || core is null)
+    {
+        return;
+    }
+
     core.ChangePlayerTeam(player, team);
 }
 
@@ -322,6 +351,22 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
             TryPickPlayer(this, player, this.get_u8(picking));
         }
     }
+    else if (cmd == this.getCommandID(nopick_command))
+    {
+        string player_tag;
+        if (!params.saferead_string(player_tag))
+        {
+            return;
+        }
+
+        bool nopick;
+        if (!params.saferead_bool(nopick))
+        {
+            return;
+        }
+        this.set_bool(player_tag, nopick);
+        updatePickWindow(null);
+    }
 }
 
 void setPicker(CRules@ this, u8 team)
@@ -338,11 +383,12 @@ void setPicker(CRules@ this, u8 team)
 
 void updatePickWindow(CPlayer@ lost_player)
 {
+    CRules@ rules = getRules();
 	string[] playerNames;
 	for (int i = 0; i < getPlayerCount(); i++)
 	{
 		CPlayer@ player = getPlayer(i);
-		if (player !is null && player !is lost_player && player.getTeamNum() == getRules().getSpectatorTeamNum())
+		if (player !is null && player !is lost_player && player.getTeamNum() == getRules().getSpectatorTeamNum() && !rules.get_bool(player.getUsername() + nopick_tag))
 		{
 			playerNames.push_back(player.getUsername());
 		}

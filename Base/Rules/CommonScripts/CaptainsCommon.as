@@ -14,6 +14,9 @@ const string state = "captains state";
 const string first_pick = "captains first pick";
 const string picking = "captains currently picking";
 const string timer = "captains timer";
+const string nopick_tag = "nopick";
+const string nopick_command = "nopick command";
+const SColor nopick_color = SColor(255, 150, 150, 150);
 
 CPlayer@ get_captain(CRules@ this, int team)
 {
