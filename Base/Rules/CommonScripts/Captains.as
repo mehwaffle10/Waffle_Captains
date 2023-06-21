@@ -124,10 +124,9 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
     int tl = tokens.length;
     if (tl > 0) {
         // Waffle: Add team commands
-        if (player.isMod() && tl >= 2 && (tokens[0] == "!blue" || tokens[0] == "!red" || tokens[0] == "!spec" || tokens[0] == "!spectator"))
+        if (tokens[0] == "!blue" || tokens[0] == "!red" || tokens[0] == "!spec" || tokens[0] == "!spectator")
         {
-            // Try to get player
-            CPlayer@ target = GetPlayerByIdent(tokens[1]);
+            CPlayer@ target = player.isMod() && tl >= 2 ? GetPlayerByIdent(tokens[1]) : player;
             if (target is null)
             {
                 return true;
