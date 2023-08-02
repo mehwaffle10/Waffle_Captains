@@ -89,7 +89,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 	f32 padheight = 6;
 	f32 stepheight = lineheight + padheight;
 	Vec2f bottomright(Maths::Min(getScreenWidth() - 100, screenMidX+maxMenuWidth), topleft.y + (players.length + 5.5) * stepheight);
-	GUI::DrawPane(topleft, bottomright, team !is null ? team.color : SColor(0xffc0c0c0));  // Waffle: Support spectator team
+	GUI::DrawPane(topleft, bottomright, team !is null ? team.color : SColor(0xff42484b));  // Waffle: Support spectator team
 
 	//offset border
 	topleft.x += stepheight;
@@ -124,14 +124,19 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 	}
 	const int tier_start = (draw_age ? age_start : accolades_start) + 70;
 
+	// Waffle: Change header color for old stats
+	CControls@ controls = getControls();
+	bool old_stats = controls.isKeyPressed(KEY_SHIFT) || controls.isKeyPressed(KEY_LSHIFT) || controls.isKeyPressed(KEY_RSHIFT);
+	SColor kdr_color = old_stats ? OLD_STATS_COLOR : SColor(0xffffffff);
+
 	//draw player table header
 	GUI::DrawText(getTranslatedString("Player"), Vec2f(topleft.x, topleft.y), SColor(0xffffffff));
 	GUI::DrawText(getTranslatedString("Username"), Vec2f(bottomright.x - 470, topleft.y), SColor(0xffffffff));
 	GUI::DrawText(getTranslatedString("Ping"), Vec2f(bottomright.x - 330, topleft.y), SColor(0xffffffff));
-	GUI::DrawText(getTranslatedString("Kills"), Vec2f(bottomright.x - 260, topleft.y), SColor(0xffffffff));
-	GUI::DrawText(getTranslatedString("Deaths"), Vec2f(bottomright.x - 190, topleft.y), SColor(0xffffffff));
-	GUI::DrawText(getTranslatedString("Assists"), Vec2f(bottomright.x - 120, topleft.y), SColor(0xffffffff));
-	GUI::DrawText(getTranslatedString("KDR"), Vec2f(bottomright.x - 50, topleft.y), SColor(0xffffffff));
+	GUI::DrawText(getTranslatedString("Kills"), Vec2f(bottomright.x - 260, topleft.y), kdr_color);    // Waffle: Change header color for old stats
+	GUI::DrawText(getTranslatedString("Deaths"), Vec2f(bottomright.x - 190, topleft.y), kdr_color);   // Waffle: --
+	GUI::DrawText(getTranslatedString("Assists"), Vec2f(bottomright.x - 120, topleft.y), kdr_color);  // Waffle: --
+	GUI::DrawText(getTranslatedString("KDR"), Vec2f(bottomright.x - 50, topleft.y), kdr_color);       // Waffle: --
 	GUI::DrawText(getTranslatedString("Accolades"), Vec2f(bottomright.x - accolades_start, topleft.y), SColor(0xffffffff));
 	if(draw_age)
 	{
@@ -144,7 +149,6 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 
 	topleft.y += stepheight * 0.5f;
 
-	CControls@ controls = getControls();
 	Vec2f mousePos = controls.getMouseScreenPos();
 
 	//draw players
@@ -509,7 +513,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 		s32 deaths  = p.getDeaths();
 		s32 assists = p.getAssists();
 		
-		if (controls.isKeyPressed(KEY_SHIFT) || controls.isKeyPressed(KEY_LSHIFT) || controls.isKeyPressed(KEY_RSHIFT))
+		if (old_stats)
 		{
 			OldPlayerStatsCore@ old_player_stats_core;
 			rules.get(OLD_PLAYER_STATS_CORE, @old_player_stats_core);
@@ -533,10 +537,10 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 
 		GUI::DrawText("" + username, Vec2f(bottomright.x - 470, topleft.y), namecolour);
 		GUI::DrawText("" + ping_in_ms, Vec2f(bottomright.x - 330, topleft.y), SColor(0xffffffff));
-		GUI::DrawText("" + kills, Vec2f(bottomright.x - 260, topleft.y), SColor(0xffffffff));
-		GUI::DrawText("" + deaths, Vec2f(bottomright.x - 190, topleft.y), SColor(0xffffffff));
-		GUI::DrawText("" + assists, Vec2f(bottomright.x - 120, topleft.y), SColor(0xffffffff));
-		GUI::DrawText("" + formatFloat(kills / Maths::Max(f32(deaths), 1.0f), "", 0, 2), Vec2f(bottomright.x - 50, topleft.y), SColor(0xffffffff));
+		GUI::DrawText("" + kills, Vec2f(bottomright.x - 260, topleft.y), kdr_color);
+		GUI::DrawText("" + deaths, Vec2f(bottomright.x - 190, topleft.y), kdr_color);
+		GUI::DrawText("" + assists, Vec2f(bottomright.x - 120, topleft.y), kdr_color);
+		GUI::DrawText("" + formatFloat(kills / Maths::Max(f32(deaths), 1.0f), "", 0, 2), Vec2f(bottomright.x - 50, topleft.y), kdr_color);
 	}
 
 	// username copied text, goes at bottom to overlay above everything else
@@ -619,7 +623,8 @@ void onRenderScoreboard(CRules@ this)
 	@hoveredPlayer = null;
 
 	Vec2f topleft(Maths::Max( 100, screenMidX-maxMenuWidth), 150);
-	drawServerInfo(40);
+	topleft.y = drawServerInfo(40);  // Waffle: Actually read the height from the server info
+	topleft.y += 8;  // Waffle: Fix spacing after server info
 
 	// start the scoreboard lower or higher.
 	topleft.y -= scrollOffset;
