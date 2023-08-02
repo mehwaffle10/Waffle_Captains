@@ -31,6 +31,12 @@ class OldPlayerStats {
 	s32 kills;
 	s32 deaths;
 	s32 assists;
+
+	OldPlayerStats() {
+		kills   = 0;
+		deaths  = 0;
+		assists = 0;
+	}
 }
 
 string[] age_description = {
@@ -73,9 +79,8 @@ string[] tier_description = {
 //returns the bottom
 float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CTeam@ team, Vec2f emblem)
 {
-	if (players.size() <= 0 || team is null)
+	if (players.size() <= 0)  // || team is null)  Waffle: Default to spectator
 		return topleft.y;
-
 
 	CRules@ rules = getRules();
 	Vec2f orig = topleft; //save for later
@@ -84,7 +89,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 	f32 padheight = 6;
 	f32 stepheight = lineheight + padheight;
 	Vec2f bottomright(Maths::Min(getScreenWidth() - 100, screenMidX+maxMenuWidth), topleft.y + (players.length + 5.5) * stepheight);
-	GUI::DrawPane(topleft, bottomright, team.color);
+	GUI::DrawPane(topleft, bottomright, team !is null ? team.color : SColor(0xffc0c0c0));  // Waffle: Support spectator team
 
 	//offset border
 	topleft.x += stepheight;
@@ -94,7 +99,7 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 	GUI::SetFont("menu");
 
 	//draw team info
-	GUI::DrawText(getTranslatedString(team.getName()), Vec2f(topleft.x, topleft.y), SColor(0xffffffff));
+	GUI::DrawText(getTranslatedString(team !is null ? team.getName() : "Spectators"), Vec2f(topleft.x, topleft.y), SColor(0xffffffff));  // Waffle: Support spectator team
 	GUI::DrawText(getTranslatedString("Players: {PLAYERCOUNT}").replace("{PLAYERCOUNT}", "" + players.length), Vec2f(bottomright.x - 400, topleft.y), SColor(0xffffffff));
 
 	topleft.y += stepheight * 2;
@@ -543,8 +548,10 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 		DrawFancyCopiedText(rules.get_string("client_copy_name"), rules.get_Vec2f("client_copy_pos"), durationLeft);
 	}
 
-	return topleft.y;
+	// Waffle: Fix spacing for spectator team
+	topleft.y += 52;
 
+	return topleft.y;
 }
 
 void onRenderScoreboard(CRules@ this)
@@ -629,52 +636,51 @@ void onRenderScoreboard(CRules@ this)
 	else
 		topleft.y = drawScoreboard(localPlayer, redplayers, topleft, this.getTeam(1), Vec2f(32, 0));
 
-	topleft.y += 52;
-
 	if (localTeam == 1)
 		topleft.y = drawScoreboard(localPlayer, blueplayers, topleft, this.getTeam(0), Vec2f(0, 0));
 	else
 		topleft.y = drawScoreboard(localPlayer, redplayers, topleft, this.getTeam(1), Vec2f(32, 0));
 
-	topleft.y += 52;
+	// Waffle: Draw spectators as their own team
+	topleft.y = drawScoreboard(localPlayer, spectators, topleft, this.getTeam(this.getSpectatorTeamNum()), Vec2f(32, 0));
 
-	if (spectators.length > 0)
-	{
-		//draw spectators
-		f32 stepheight = 16;
-		Vec2f bottomright(Maths::Min(getScreenWidth() - 100, screenMidX+maxMenuWidth), topleft.y + stepheight * 2);
-		f32 specy = topleft.y + stepheight * 0.5;
-		GUI::DrawPane(topleft, bottomright, SColor(0xffc0c0c0));
+	// if (spectators.length > 0)
+	// {
+	// 	//draw spectators
+	// 	f32 stepheight = 16;
+	// 	Vec2f bottomright(Maths::Min(getScreenWidth() - 100, screenMidX+maxMenuWidth), topleft.y + stepheight * 2);
+	// 	f32 specy = topleft.y + stepheight * 0.5;
+	// 	GUI::DrawPane(topleft, bottomright, SColor(0xffc0c0c0));
 
-		Vec2f textdim;
-		string s = getTranslatedString("Spectators:");
-		GUI::GetTextDimensions(s, textdim);
+	// 	Vec2f textdim;
+	// 	string s = getTranslatedString("Spectators:");
+	// 	GUI::GetTextDimensions(s, textdim);
 
-		GUI::DrawText(s, Vec2f(topleft.x + 5, specy), SColor(0xffaaaaaa));
+	// 	GUI::DrawText(s, Vec2f(topleft.x + 5, specy), SColor(0xffaaaaaa));
 
-		f32 specx = topleft.x + textdim.x + 15;
-		for (u32 i = 0; i < spectators.length; i++)
-		{
-			CPlayer@ p = spectators[i];
-			if (specx < bottomright.x - 100)
-			{
-				string name = p.getCharacterName() + " (" + p.getUsername() + ") " + s32(p.getPing() * 1000.0f / 30.0f) + "ms";  // Waffle: Add username and ping to spectator list
-				if (i != spectators.length - 1)
-					name += ",";
-				GUI::GetTextDimensions(name, textdim);
-				SColor namecolour = this.get_bool(p.getUsername() + nopick_tag) ? nopick_color : getNameColour(p);  // Waffle: Change color for nopick players
-				GUI::DrawText(name, Vec2f(specx, specy), namecolour);
-				specx += textdim.x + 10;
-			}
-			else
-			{
-				GUI::DrawText(getTranslatedString("and more ..."), Vec2f(specx, specy), SColor(0xffaaaaaa));
-				break;
-			}
-		}
+	// 	f32 specx = topleft.x + textdim.x + 15;
+	// 	for (u32 i = 0; i < spectators.length; i++)
+	// 	{
+	// 		CPlayer@ p = spectators[i];
+	// 		if (specx < bottomright.x - 100)
+	// 		{
+	// 			string name = p.getCharacterName() + " (" + p.getUsername() + ") " + s32(p.getPing() * 1000.0f / 30.0f) + "ms";  // Waffle: Add username and ping to spectator list
+	// 			if (i != spectators.length - 1)
+	// 				name += ",";
+	// 			GUI::GetTextDimensions(name, textdim);
+	// 			SColor namecolour = this.get_bool(p.getUsername() + nopick_tag) ? nopick_color : getNameColour(p);  // Waffle: Change color for nopick players
+	// 			GUI::DrawText(name, Vec2f(specx, specy), namecolour);
+	// 			specx += textdim.x + 10;
+	// 		}
+	// 		else
+	// 		{
+	// 			GUI::DrawText(getTranslatedString("and more ..."), Vec2f(specx, specy), SColor(0xffaaaaaa));
+	// 			break;
+	// 		}
+	// 	}
 
-		topleft.y += 52;
-	}
+	// 	topleft.y += 52;
+	// }
 
 	float scoreboardHeight = topleft.y + scrollOffset;
 	float screenHeight = getScreenHeight();
@@ -749,6 +755,7 @@ void onTick(CRules@ this)
 
 void onInit(CRules@ this)
 {
+	// Waffle: Keep old stats
 	OldPlayerStatsCore@ old_player_stats_core = OldPlayerStatsCore();
 	this.set(OLD_PLAYER_STATS_CORE, @old_player_stats_core);
 	onRestart(this);
