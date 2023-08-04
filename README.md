@@ -9,24 +9,24 @@ A mod for orchestrating captains matches that is designed to be run with [Waffle
 - Admin commands for orchestration
 - Player names find closest best match
 - Flag locking during selection
-- Scoreboard resets each match. Hold `shift` to see stats from previous map
+- Scoreboard resets each match. Hold `shift` to see stats from previous match
 - Specators render as another team in scoreboard
 
 ## Game Flow
 An admin uses the `!captain` command to pick players as captains for both red and blue team, starting fight phase. Players drop and can no longer pick up flags. The captains fight, entering pick phase when the first player dies. When it is a captain's turn to pick, a GUI with player names will show in the upper left. All other players will see a title card showing whos turn it is to pick. The winner gets first pick. The loser then gets two picks. Each captain then takes turns picking players until none remain (snake draft), ending pick phase and returning to normal play. Next mapping will reset to normal play
 
-## Commands
-# User Commands
+# Commands
+## User Commands
 - `!r`, `!red` - Swap yourself to red team
 - `!b`, `!blue` - Swap yourself to blue team
 - `!s`, `!spec`, `!spectator` - Swap yourself to spectator
 - `!nopick` - Swap yourself to spectator and prevent yourself from being picked by captains (your name will be greyed out). Use again or swap teams to toggle off
 
-# Captain Commands
+## Captain Commands
 - `!pick <player>` - Alternative to using the UI when picking players for your team
 - `!forfeit` - Forfeit during fight phase, giving the other captain first pick
 
-# Admin Commands
+## Admin Commands
 - `!captains <blue_captain> <red_captain> [b|blue|r|red|random]` - Most important command. Sets everyone to spectator except for the two captains, who will fight for first pick after three seconds. Can specify first pick team after captain names to skip the fight and give the first pick to the specified team. Can be run again at any point to restart the game flow
 - `!r <player>`, `!red <player>` - Swap target player to red team
 - `!b <player>`, `!blue <player>` - Swap target player to blue team
