@@ -1,5 +1,5 @@
-### Waffle_Captains
-A mod for orchestrating captains matches that is designed to be run with Waffle_Balance and Waffle_Apocalypse. Adapted from PUNK123's version that was adapted from other sources. Only gameplay changes come from `gamemode.cfg`
+# Waffle_Captains
+A mod for orchestrating captains matches that is designed to be run with [Waffle_Balance](https://github.com/mehwaffle10/Waffle_Balance) and [Waffle_Apocalypse](https://github.com/mehwaffle10/Waffle_Apocalypse). Adapted from PUNK123's version that was adapted from other sources. Only gameplay changes come from `gamemode.cfg`
 
 ## Features:
 - Players default to spectator when joining
@@ -9,10 +9,13 @@ A mod for orchestrating captains matches that is designed to be run with Waffle_
 - Admin commands for orchestration
 - Player names find closest best match
 - Flag locking during selection
+- Scoreboard resets each match. Hold `shift` to see stats from previous map
+- Specators render as another team in scoreboard
 
-# Game Flow
-An admin uses the `!captain` command to pick players as captains for both red and blue team, starting fight phase. Players drop and can no longer pick up flags. The captains fight, entering pick phase when the first player dies. The winner gets first pick. The loser then gets two picks. Each captain then takes turns picking players until none remain (snake draft), ending pick phase and returning to normal play. Next mapping will reset to normal play
+## Game Flow
+An admin uses the `!captain` command to pick players as captains for both red and blue team, starting fight phase. Players drop and can no longer pick up flags. The captains fight, entering pick phase when the first player dies. When it is a captain's turn to pick, a GUI with player names will show in the upper left. All other players will see a title card showing whos turn it is to pick. The winner gets first pick. The loser then gets two picks. Each captain then takes turns picking players until none remain (snake draft), ending pick phase and returning to normal play. Next mapping will reset to normal play
 
+## Commands
 # User Commands
 - `!r`, `!red` - Swap yourself to red team
 - `!b`, `!blue` - Swap yourself to blue team
@@ -30,5 +33,5 @@ An admin uses the `!captain` command to pick players as captains for both red an
 - `!s <player>`, `!spec <player>`, `!spectator <player>` - Swap target player to spectator
 - `!nopick <player>` - Swap target player to spectator and prevent them from being picked by captains (name will be greyed out). Use again or swap player team to toggle off
 
-# Fixing
+## Fixing
 The mod is mostly stable. I've only ever had one script crash on a player joining in a buggy way that was fixed by an `/rcon rebuild` and `/rcon /nextmap`
