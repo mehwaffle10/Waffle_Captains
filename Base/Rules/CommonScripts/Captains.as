@@ -157,9 +157,9 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
             this.Sync("captain blue", true);
             this.set_string("captain red", captain_red.getUsername());
             this.Sync("captain red", true);
-            if (tl > 3 && (tokens[3] == "blue" || tokens[3] == "red" || tokens[3] == "random"))
+            if (tl > 3 && (tokens[3] == "b" || tokens[3] == "blue" || tokens[3] == "r" || tokens[3] == "red" || tokens[3] == "random"))
             {
-                StartPickPhase(this, tokens[3] == "blue" ? TEAM_BLUE : tokens[3] == "red" ? TEAM_RED : XORRandom(2));
+                StartPickPhase(this, (tokens[3] == "b" || tokens[3] == "blue") ? TEAM_BLUE : (tokens[3] == "r" || tokens[3] == "red") ? TEAM_RED : XORRandom(2));
             }
             else
             {
