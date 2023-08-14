@@ -266,7 +266,9 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 		Vec2f clantag_actualsize(0, 0);
 
 		//render the player + stats
-		SColor namecolour = getNameColour(p);
+        // Waffle: Change color for nopick players
+        bool nopick = rules.get_bool(p.getUsername() + NOPICK_TAG);
+        SColor namecolour = nopick ? NOPICK_COLOR : getNameColour(p);
 
 		//right align clantag
 		if (clantag != "")
@@ -673,7 +675,7 @@ void onRenderScoreboard(CRules@ this)
 	// 			if (i != spectators.length - 1)
 	// 				name += ",";
 	// 			GUI::GetTextDimensions(name, textdim);
-	// 			SColor namecolour = this.get_bool(p.getUsername() + nopick_tag) ? nopick_color : getNameColour(p);  // Waffle: Change color for nopick players
+	// 			SColor namecolour = this.get_bool(p.getUsername() + NOPICK_TAG) ? NOPICK_COLOR : getNameColour(p);  // Waffle: Change color for nopick players
 	// 			GUI::DrawText(name, Vec2f(specx, specy), namecolour);
 	// 			specx += textdim.x + 10;
 	// 		}

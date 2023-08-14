@@ -4,7 +4,7 @@
 bool canPickupFlag(CBlob@ blob)
 {
 	// Waffle: Prevent players from picking up flags during fight/pick phase
-	if (getRules().get_u8(state) != State::none)
+	if (getRules().get_u8(STATE) != State::none)
 	{
 		return false;
 	}

@@ -20,7 +20,7 @@ void onInit(CRules@ this)
     CaptainsReset(this);
 
     this.addCommandID("pick");
-    this.addCommandID(nopick_command);
+    this.addCommandID(NOPICK_COMMAND);
 
     if (!GUI::isFontLoaded("Bigger Font"))
     {
@@ -37,13 +37,13 @@ void onRestart(CRules@ this)
 
 void onTick(CRules@ this)
 {
-    if (isServer() && this.get_u8(state) == State::fight && this.get_s32(timer) != 0)
+    if (isServer() && this.get_u8(STATE) == State::fight && this.get_s32(TIMER) != 0)
     {
-        s32 time_left = this.get_s32(timer) - getGameTime();
+        s32 time_left = this.get_s32(TIMER) - getGameTime();
         if (time_left <= 0)
         {
-            this.set_s32(timer, 0);
-            this.Sync(timer, true);
+            this.set_s32(TIMER, 0);
+            this.Sync(TIMER, true);
 
             this.SetCurrentState(GAME);
             getNet().server_SendMsg("Fight for first pick!");
@@ -56,7 +56,7 @@ void onPlayerChangedTeam(CRules@ this, CPlayer@ player, u8 oldteam, u8 newteam)
     // Untag if they join a team
     if (newteam != this.getSpectatorTeamNum() && player !is null)
     {
-        this.set_bool(player.getUsername() + nopick_tag, false);
+        this.set_bool(player.getUsername() + NOPICK_TAG, false);
     }
 
 	updatePickWindow(null);
@@ -74,9 +74,9 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 
 void onRender(CRules@ this)
 {
-    if (this.get_u8(state) == State::pick && this.exists(picking))
+    if (this.get_u8(STATE) == State::pick && this.exists(PICKING))
     {
-        u8 team_picking = this.get_u8(picking);
+        u8 team_picking = this.get_u8(PICKING);
         CPlayer@ captain = get_captain(this, team_picking);
         if (captain !is null && getLocalPlayer() is captain)
         {
@@ -104,9 +104,9 @@ void onRender(CRules@ this)
             );   
         }
 	}
-    else if (this.get_u8(state) == State::fight)
+    else if (this.get_u8(STATE) == State::fight)
     {
-        string msg = this.get_s32(timer) == 0 ? "Fight for first pick!" : ((this.get_s32(timer) - getGameTime()) / 30 + 1) + " seconds until fight!";
+        string msg = this.get_s32(TIMER) == 0 ? "Fight for first pick!" : ((this.get_s32(TIMER) - getGameTime()) / 30 + 1) + " seconds until fight!";
 
         Vec2f Mid(getScreenWidth() / 2, getScreenHeight() * 0.2);
         Vec2f textDims;
@@ -166,15 +166,15 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
                 StartFightPhase(this, captain_blue, captain_red);
             }
         }
-        else if (tokens[0] == "!pick" && tl >= 2 && this.get_u8(state) == State::pick)
+        else if (tokens[0] == "!pick" && tl >= 2 && this.get_u8(STATE) == State::pick)
         {
-            u8 team_picking = this.get_u8(picking);
+            u8 team_picking = this.get_u8(PICKING);
             CPlayer@ captain_blue = get_captain(this, TEAM_BLUE);
             CPlayer@ captain_red  = get_captain(this, TEAM_RED);
             if (captain_blue is null || captain_red is null)
             {
                 logBroadcast("onServerProcessChat", "ERROR: in pick phase but a captain is null; exiting pick phase.");
-                this.set_u8(state, State::none);
+                this.set_u8(STATE, State::none);
             }
             else if (player is captain_blue && team_picking == TEAM_BLUE || player is captain_red && team_picking == TEAM_RED)
             {
@@ -186,7 +186,7 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
                 }
             }
         }
-        else if(tokens[0] == "!forfeit" && this.get_u8(state) == State::fight && (player is get_captain(this, TEAM_BLUE) || player is get_captain(this, TEAM_RED)))
+        else if(tokens[0] == "!forfeit" && this.get_u8(STATE) == State::fight && (player is get_captain(this, TEAM_BLUE) || player is get_captain(this, TEAM_RED)))
         {
             StartPickPhase(this, Maths::Abs(player.getTeamNum() - 1));
         }
@@ -197,10 +197,10 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
             {
                 // Tag the player
                 CBitStream params;
-                string player_tag = target.getUsername() + nopick_tag;
+                string player_tag = target.getUsername() + NOPICK_TAG;
                 params.write_string(player_tag);
                 params.write_bool(!this.get_bool(player_tag));
-                this.SendCommand(this.getCommandID(nopick_command), params);
+                this.SendCommand(this.getCommandID(NOPICK_COMMAND), params);
 
                 // Force spec
                 ChangePlayerTeam(this, target, this.getSpectatorTeamNum());
@@ -212,7 +212,7 @@ bool onServerProcessChat(CRules@ this, const string &in textIn, string &out text
 
 void CaptainsReset(CRules@ this)
 {
-    this.set_u8(state, State::none);
+    this.set_u8(STATE, State::none);
     this.set_bool("can choose team", true);
 }
 
@@ -233,20 +233,20 @@ int CountPlayersInTeam(int teamNum)
 // Adds the player to the given team if they are currently spectating and can be picked
 void TryPickPlayer(CRules@ this, CPlayer@ player, u8 team)
 {
-    if (player.getTeamNum() == this.getSpectatorTeamNum() && !this.get_bool(player.getUsername() + nopick_tag)) // Don't allow picking of players already on teams or nopick players
+    if (player.getTeamNum() == this.getSpectatorTeamNum() && !this.get_bool(player.getUsername() + NOPICK_TAG)) // Don't allow picking of players already on teams or nopick players
     {
         ChangePlayerTeam(this, player, team);
 
         // End picking phase
         if (getPlayerCount() == 0 || CountPlayersInTeam(this.getSpectatorTeamNum()) == 0)
         {
-            this.set_u8(state, State::none);
-            this.Sync(state, true);
+            this.set_u8(STATE, State::none);
+            this.Sync(STATE, true);
             return;
         }
 
         // Set the team that's picking
-        u8 first_pick_team = this.get_u8(first_pick);
+        u8 first_pick_team = this.get_u8(FIRST_PICK);
         u8 current_count = CountPlayersInTeam(team);
         setPicker(this, current_count == 2 && team != first_pick_team ? team : Maths::Abs(team - 1));
     }
@@ -271,11 +271,11 @@ void StartFightPhase(CRules@ this, CPlayer@ captain_blue, CPlayer@ captain_red)
 
     SetTeams(this);
 
-    this.set_u8(state, State::fight);
-    this.Sync(state, true);
+    this.set_u8(STATE, State::fight);
+    this.Sync(STATE, true);
 
-    this.set_s32(timer, getGameTime() + 3 * getTicksASecond());
-    this.Sync(timer, true);
+    this.set_s32(TIMER, getGameTime() + 3 * getTicksASecond());
+    this.Sync(TIMER, true);
 
     this.set_bool("can choose team", false);
     getNet().server_SendMsg("Swapping teams is disabled!");
@@ -287,11 +287,11 @@ void StartPickPhase(CRules@ this, u8 first_pick_team)
 
     SetTeams(this);
 
-    this.set_u8(state, State::pick);
-    this.Sync(state, true);
+    this.set_u8(STATE, State::pick);
+    this.Sync(STATE, true);
 
-    this.set_u8(first_pick, first_pick_team);
-    this.Sync(first_pick, true);
+    this.set_u8(FIRST_PICK, first_pick_team);
+    this.Sync(FIRST_PICK, true);
 
     setPicker(this, first_pick_team);
 }
@@ -329,7 +329,7 @@ void SetTeams(CRules@ this)
 
 void onPlayerDie(CRules@ this, CPlayer@ victim, CPlayer@ killer, u8 customData)
 {
-    if (isServer() && this.get_u8(state) == State::fight && this.get_s32(timer) == 0 && killer !is null)
+    if (isServer() && this.get_u8(STATE) == State::fight && this.get_s32(TIMER) == 0 && killer !is null)
     {
         u8 winning_team = Maths::Abs(victim.getTeamNum() - 1);
         StartPickPhase(this, winning_team);
@@ -347,10 +347,10 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
         CPlayer@ player = getPlayerByUsername(username);
         if (player !is null)
         {
-            TryPickPlayer(this, player, this.get_u8(picking));
+            TryPickPlayer(this, player, this.get_u8(PICKING));
         }
     }
-    else if (cmd == this.getCommandID(nopick_command))
+    else if (cmd == this.getCommandID(NOPICK_COMMAND))
     {
         string player_tag;
         if (!params.saferead_string(player_tag))
@@ -376,8 +376,8 @@ void setPicker(CRules@ this, u8 team)
         return;
     }
 
-    this.set_u8(picking, team);
-    this.Sync(picking, true);
+    this.set_u8(PICKING, team);
+    this.Sync(PICKING, true);
 }
 
 void updatePickWindow(CPlayer@ lost_player)
@@ -387,7 +387,7 @@ void updatePickWindow(CPlayer@ lost_player)
 	for (int i = 0; i < getPlayerCount(); i++)
 	{
 		CPlayer@ player = getPlayer(i);
-		if (player !is null && player !is lost_player && player.getTeamNum() == getRules().getSpectatorTeamNum() && !rules.get_bool(player.getUsername() + nopick_tag))
+		if (player !is null && player !is lost_player && player.getTeamNum() == getRules().getSpectatorTeamNum() && !rules.get_bool(player.getUsername() + NOPICK_TAG))
 		{
 			playerNames.push_back(player.getUsername());
 		}
