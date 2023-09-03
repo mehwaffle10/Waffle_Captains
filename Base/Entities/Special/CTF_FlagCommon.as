@@ -1,16 +1,21 @@
 
 #include "CaptainsCommon.as"
 
+const string return_prop = "return time";
+const u16 return_time = 10 * getTicksASecond();  // Waffle: Flag returns in 10 seconds instead of 20
+
 bool canPickupFlag(CBlob@ blob)
 {
-	// Waffle: Prevent players from picking up flags during fight/pick phase
-	if (getRules().get_u8(STATE) != State::none)
+    // Waffle: Prevent players from picking up flags during fight/pick phase
+    CaptainsCore@ captains_core;
+    getRules().get(CAPTAINS_CORE, @captains_core);
+	if (captains_core !is null && captains_core.state != State::none)
 	{
 		return false;
 	}
 
 	bool pick = !blob.hasAttached();
-		
+
 	if (!pick)
 	{
 		CBlob@ carried = blob.getCarriedBlob();
@@ -23,15 +28,14 @@ bool canPickupFlag(CBlob@ blob)
 			pick = true;
 		}
 	}
-	
-	
+
 	return pick;
 }
 
 bool shouldFastReturn(CBlob@ this)
 {
-	int team = this.getTeamNum();
-		
+	const int team = this.getTeamNum();
+
 	bool fast_return = false;
 	CBlob@[] overlapping;
 	if (this.getOverlapping(overlapping))

@@ -1,5 +1,6 @@
 #include "ColoredNameToggleCommon.as"
 
+// Waffle: Add support for seeing previous match's stats
 const SColor OLD_STATS_COLOR = SColor(0xffa0ffa0);
 const string OLD_STATS_TOOLTIP = "Hold \"shift\" to see stats from previous match";
 
@@ -93,10 +94,11 @@ float drawServerInfo(float y)
 	if(dim.x + 15 > width)
 		width = dim.x + 15;
 
+
 	pos.x -= width/2;
 	Vec2f bot = pos;
 	bot.x += width;
-	bot.y += 112;
+	bot.y += 112;  // Waffle: Add space for extra row
 
 	Vec2f mid(getScreenWidth()/2, y);
 
