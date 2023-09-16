@@ -40,10 +40,14 @@ class CaptainsCore
     dictionary no_pick;
     dictionary player_teams;
 
+    CaptainsCore()
+    {
+        can_swap_teams = true;
+    }
+
     void Reset()
     {
         state = State::none;
-        can_swap_teams = true;
         UpdatePickWindow(null);
     }
 
@@ -126,13 +130,12 @@ class CaptainsCore
         if (state == State::fight && timer == 0 && killer !is null)
         {
             u8 winning_team = Maths::Abs(victim.getTeamNum() - 1);
-            StartPickPhase(rules, winning_team);
-
             if (isServer())
             {
                 CPlayer@ winner = getCaptain(winning_team);
                 getNet().server_SendMsg((winner !is null ? winner.getUsername() : killer.getUsername()) + " won the fight!");
             }
+            StartPickPhase(rules, winning_team);
         }
     }
 
@@ -185,26 +188,28 @@ class CaptainsCore
 
     void CheckEndPickPhase(CRules@ rules, CPlayer@ picked_player)
     {
-        // End picking phase
-        u8 left_to_pick = CountPlayersInTeam(rules, rules.getSpectatorTeamNum(), picked_player);
-        if (left_to_pick > 1)
+        // Check how many people are left in spec
+        int count = 0;
+        CPlayer@ last_pick;
+        for (int i = 0; i < getPlayerCount(); i++)
+        {
+            CPlayer@ player = getPlayer(i);
+            if (player !is null && player !is picked_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !isNoPick(player.getUsername()))
+            {
+                count++;
+                @last_pick = @player;
+            }
+        }
+        if (count > 1)
         {
             return;
         }
 
         if (isServer())
         {
-            if (left_to_pick > 0)
+            if (last_pick !is null)
             {
-                for (int i = 0; i < getPlayerCount(); i++)
-                {
-                    CPlayer@ player = getPlayer(i);
-                    if (player !is null && player.getTeamNum() == rules.getSpectatorTeamNum() && !isNoPick(player.getUsername()))
-                    {
-                        ChangePlayerTeam(rules, player, picking);
-                        break;
-                    }
-                }
+                ChangePlayerTeam(rules, last_pick, picking);
             }
             getNet().server_SendMsg("Exiting pick phase.");
         }
@@ -261,12 +266,11 @@ class CaptainsCore
     {
         if (rules !is null && player.getTeamNum() == rules.getSpectatorTeamNum() && !no_pick.exists(player.getUsername())) // Don't allow picking of players already on teams or nopick players
         {
-            print("PICKED PLAYER: " + player.getUsername());
             ChangePlayerTeam(rules, player, team);
 
             // Set the team that's picking
             pick_count++;
-            picking = pick_count == 2 ? team : Maths::Abs(team - 1);
+            picking = pick_count == 2 || pick_count == 4 ? team : Maths::Abs(team - 1);
             CheckEndPickPhase(rules, player);
         }
     }
@@ -279,30 +283,6 @@ class CaptainsCore
             no_pick.get(username, nopick);
         }
         return nopick;
-    }
-
-    int CountPlayersInTeam(CRules@ rules, int team, CPlayer@ picked_player)
-    {
-        if (rules is null)
-        {
-            return 0;
-        }
-
-        int count = 0;
-        for (int i = 0; i < getPlayerCount(); i++)
-        {
-            CPlayer@ player = getPlayer(i);
-            if (player !is null && player !is picked_player && player.getTeamNum() == team && !isNoPick(player.getUsername()))
-            {
-                count++;
-            }
-        }
-        if (isClient() && team != rules.getSpectatorTeamNum() && picked_player !is null)
-        {
-            count++;
-        }
-
-        return count;
     }
 
     CPlayer@ getCaptain(int team)

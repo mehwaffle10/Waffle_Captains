@@ -6,6 +6,7 @@
 void onInit(CRules@ this)
 {
 	ChatCommands::RegisterCommand(CaptainsCommand());
+    ChatCommands::RegisterCommand(LockTeamsCommand());
 	ChatCommands::RegisterCommand(PickCommand());
 	ChatCommands::RegisterCommand(ForfeitCommand());
     ChatCommands::RegisterCommand(NoPickCommand());
@@ -15,22 +16,26 @@ class CaptainsCommand : ChatCommand
 {
 	CaptainsCommand()
 	{
-		super("captains", "Start a captains fight");
+		super("captains", "Start a captains fight. Disables team swapping and forces all other players to spec");
         SetUsage("<blue captain name> <red captain name> [b|blue|0|r|red|1|random]");
 	}
 
 	void Execute(string[] args, CPlayer@ player)
 	{
-        if (args.length < 2)
+        if (player is null || !player.isMod() || args.length < 2)
         {
             return;
         }
 
-		CPlayer@ captain_blue = GetPlayerByIdent(args[0]);
-        CPlayer@ captain_red  = GetPlayerByIdent(args[1]);
+		CPlayer@ captain_blue = GetPlayerByIdent(args[0], player);
+        CPlayer@ captain_red  = GetPlayerByIdent(args[1], player);
         if (captain_blue is null || captain_red is null)
         {
-            log("onServerProcessChat", "One of the given captain names was invalid.");
+            return;
+        }
+        if (captain_blue is captain_red)
+        {
+            LocalError("Blue captain can't also be red captain!", player);
             return;
         }
 
@@ -57,6 +62,30 @@ class CaptainsCommand : ChatCommand
 	}
 }
 
+class LockTeamsCommand : ChatCommand
+{
+	LockTeamsCommand()
+	{
+		super("lockteams", "Toggle whether teams are locked");
+	}
+
+	void Execute(string[] args, CPlayer@ player)
+	{
+        if (player is null || !player.isMod())
+        {
+            return;
+        }
+        CRules@ rules = getRules();
+        CaptainsCore@ captains_core;
+        rules.get(CAPTAINS_CORE, @captains_core);
+		if (captains_core !is null)
+        {
+            captains_core.can_swap_teams = !captains_core.can_swap_teams;
+            getNet().server_SendMsg("Swapping teams is " + (captains_core.can_swap_teams ? "enabled!" : "disabled!"));
+        }
+	}
+}
+
 class PickCommand : ChatCommand
 {
 	PickCommand()
@@ -70,20 +99,40 @@ class PickCommand : ChatCommand
         CRules@ rules = getRules();
         CaptainsCore@ captains_core;
         rules.get(CAPTAINS_CORE, @captains_core);
-        if (captains_core is null || player is null || args.length < 1)
+        if (captains_core is null || player is null)
         {
             return;
         }
 
         CPlayer@ blue_captain = captains_core.getCaptain(0);
         CPlayer@ red_captain = captains_core.getCaptain(1);
+        if (player !is blue_captain && player !is red_captain)
+        {
+            LocalError("You can only pick as a captain!", player);
+            return;
+        }
+        if (args.length < 1)
+        {
+            LocalError("You must specify a player!", player);
+            return;
+        }
+        if (captains_core.state != State::pick)
+        {
+            LocalError("You can only pick during pick phase!", player);
+            return;
+        }
+
         if (player is blue_captain && captains_core.picking == TEAM_BLUE || player is red_captain && captains_core.picking == TEAM_RED)
         {
-            CPlayer@ target = GetPlayerByIdent(args[0]);
+            CPlayer@ target = GetPlayerByIdent(args[0], player);
             if (target !is null)
             {
                 captains_core.TryPickPlayer(rules, target, captains_core.picking);
             }
+        }
+        else
+        {
+            LocalError("It is not your turn to pick!", player);
         }
 	}
 }
@@ -92,7 +141,7 @@ class ForfeitCommand : ChatCommand
 {
 	ForfeitCommand()
 	{
-		super("forfeit", "Forfeit first pick as captain");
+		super("forfeit", "Forfeit first pick as captain instead of fighting");
 	}
 
 	void Execute(string[] args, CPlayer@ player)
@@ -102,6 +151,17 @@ class ForfeitCommand : ChatCommand
         rules.get(CAPTAINS_CORE, @captains_core);
         if (captains_core is null || player is null)
         {
+            return;
+        }
+        string username = player.getUsername();
+        if (username != captains_core.blue_captain_name && username != captains_core.red_captain_name)
+        {
+            LocalError("You can only forfeit as a captain!", player);
+            return;
+        }
+        if (captains_core.state != State::fight)
+        {
+            LocalError("You can only forfeit during fight phase!", player);
             return;
         }
 		captains_core.StartPickPhase(getRules(), Maths::Abs(player.getTeamNum() - 1));
@@ -122,7 +182,7 @@ class NoPickCommand : ChatCommand
         {
             return;
         }
-        CPlayer@ target = player.isMod() && args.length > 0 ? GetPlayerByIdent(args[0]) : player;
+        CPlayer@ target = player.isMod() && args.length > 0 ? GetPlayerByIdent(args[0], player) : player;
         if (target is null)
         {
             return;
@@ -135,6 +195,10 @@ class NoPickCommand : ChatCommand
             string username = target.getUsername();
             captains_core.no_pick.set(username, !captains_core.isNoPick(username));
             captains_core.ChangePlayerTeam(rules, target, rules.getSpectatorTeamNum());
+        }
+        else
+        {
+            LocalError("Swapping teams is disabled!", player);
         }
 	}
 }

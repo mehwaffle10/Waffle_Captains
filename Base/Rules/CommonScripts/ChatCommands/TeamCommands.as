@@ -59,7 +59,7 @@ class SpecCommand : ChatCommand
 
 void ChangeTeam(CPlayer@ player, u8 team, string[] args)
 {
-    CPlayer@ target = player.isMod() && args.length > 0 ? GetPlayerByIdent(args[0]) : player;
+    CPlayer@ target = player.isMod() && args.length > 0 ? GetPlayerByIdent(args[0], player) : player;
     if (target is null)
     {
         return;
@@ -70,5 +70,9 @@ void ChangeTeam(CPlayer@ player, u8 team, string[] args)
     if (captains_core !is null && (captains_core.can_swap_teams || player.isMod()))
     {
         captains_core.ChangePlayerTeam(rules, target, team);
+    }
+    else
+    {
+        LocalError("Swapping teams is disabled!", player);
     }
 }
