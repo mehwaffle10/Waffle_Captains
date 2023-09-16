@@ -6,6 +6,7 @@ const int TEAM_RED  = 1;
 
 const SColor COLOR_BLUE(0xff0000ff);
 const SColor COLOR_RED(0xffff0000);
+const SColor CHAT_COLOR = ConsoleColour::PRIVCHAT;
 
 const string CAPTAINS_CORE = "captains core";
 const string CAPTAINS_CORE_SYNC_COMMAND = "captains core sync";
@@ -60,10 +61,7 @@ class CaptainsCore
                 timer = 0;
 
                 rules.SetCurrentState(GAME);
-                if (isServer())
-                {
-                    getNet().server_SendMsg("Fight for first pick!");
-                }
+                client_AddToChat("Fight for first pick!", CHAT_COLOR);
             }
         }
     }
@@ -126,14 +124,22 @@ class CaptainsCore
 
     void onPlayerDie(CRules@ rules, CPlayer@ victim, CPlayer@ killer, u8 customData)
     {
-        if (state == State::fight && timer == 0 && killer !is null)
+        if (state == State::fight && timer == 0)
         {
+            /*
+                ConsoleColour::CHATSPEC
+                ConsoleColour::CRAZY
+                ConsoleColour::ERROR
+                ConsoleColour::GAME
+                ConsoleColour::GENERIC
+                ConsoleColour::INFO
+                ConsoleColour::PRIVCHAT
+                ConsoleColour::RCON
+                CHAT_COLOR
+                ConsoleColour::WARNING
+            */
             u8 winning_team = Maths::Abs(victim.getTeamNum() - 1);
-            if (isServer())
-            {
-                CPlayer@ winner = getCaptain(winning_team);
-                getNet().server_SendMsg((winner !is null ? winner.getUsername() : killer.getUsername()) + " won the fight!");
-            }
+            client_AddToChat((winning_team == TEAM_BLUE ? blue_captain_name : red_captain_name) + " won the fight!", CHAT_COLOR);
             StartPickPhase(rules, winning_team);
         }
     }
@@ -161,24 +167,17 @@ class CaptainsCore
 
     void StartFightPhase(CRules@ rules, CPlayer@ captain_blue, CPlayer@ captain_red)
     {
-        getNet().server_SendMsg("Entering fight phase");
+        client_AddToChat("Entering fight phase", CHAT_COLOR);
         SetTeams(rules);
         state = State::fight;
         timer = getGameTime() + 3 * getTicksASecond();
         can_swap_teams = false;
-        if (isServer())
-        {
-            getNet().server_SendMsg("Swapping teams is disabled!");
-        }
+        client_AddToChat("Swapping teams is disabled", CHAT_COLOR);
     }
 
     void StartPickPhase(CRules@ rules, u8 first_pick_team)
     {
-        if (isServer())
-        {
-            getNet().server_SendMsg("Entering pick phase. First pick: " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red"));
-        }
-        
+        client_AddToChat("Entering pick phase. First pick: " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red"), CHAT_COLOR);
         // End immediately if there are no players to pick from
         state = State::pick;
         picking = first_pick_team;
@@ -204,14 +203,11 @@ class CaptainsCore
             return;
         }
 
-        if (isServer())
+        if (isServer() && last_pick !is null)
         {
-            if (last_pick !is null)
-            {
-                ChangePlayerTeam(rules, last_pick, picking);
-            }
-            getNet().server_SendMsg("Exiting pick phase.");
+            ChangePlayerTeam(rules, last_pick, picking);
         }
+        client_AddToChat("Exiting pick phase.", CHAT_COLOR);
         state = State::none;
     }
 
