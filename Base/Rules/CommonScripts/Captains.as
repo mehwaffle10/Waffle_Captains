@@ -125,6 +125,10 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
         {
             return;
         }
+        if (!params.saferead_bool(captains_core.can_swap_teams))
+        {
+            return;
+        }
 
         // Sync no_pick dictionary
         u8 length;
