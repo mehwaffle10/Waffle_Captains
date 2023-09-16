@@ -44,7 +44,7 @@ class CaptainsCommand : ChatCommand
 
         captains_core.blue_captain_name = captain_blue.getUsername();
         captains_core.red_captain_name = captain_red.getUsername();
-
+        captains_core.pick_count = 0;
 
         if (args.length >= 3 && (args[2] == "b" || args[2] == "blue" || args[2] == "0" || args[2] == "r" || args[2] == "red" || args[2] == "random"))
         {
@@ -118,21 +118,22 @@ class NoPickCommand : ChatCommand
 
 	void Execute(string[] args, CPlayer@ player)
 	{
+        if (player is null)
+        {
+            return;
+        }
         CPlayer@ target = player.isMod() && args.length > 0 ? GetPlayerByIdent(args[0]) : player;
-        if (!isServer() || target is null)
+        if (target is null)
         {
             return;
         }
         CRules@ rules = getRules();
         CaptainsCore@ captains_core;
         rules.get(CAPTAINS_CORE, @captains_core);
-        if (captains_core is null || player is null)
-        {
-            return;
-        }
 		if (captains_core !is null && (captains_core.can_swap_teams || player.isMod()))
         {
-            captains_core.no_pick.set(target.getUsername(), true);
+            string username = target.getUsername();
+            captains_core.no_pick.set(username, !captains_core.isNoPick(username));
             captains_core.ChangePlayerTeam(rules, target, rules.getSpectatorTeamNum());
         }
 	}

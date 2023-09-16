@@ -60,7 +60,7 @@ class SpecCommand : ChatCommand
 void ChangeTeam(CPlayer@ player, u8 team, string[] args)
 {
     CPlayer@ target = player.isMod() && args.length > 0 ? GetPlayerByIdent(args[0]) : player;
-    if (!isServer() || target is null)
+    if (target is null)
     {
         return;
     }

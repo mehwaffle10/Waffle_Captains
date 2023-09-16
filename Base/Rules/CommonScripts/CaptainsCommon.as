@@ -31,8 +31,8 @@ namespace State
 class CaptainsCore
 {
     u8 state;
-    u8 first_pick_team;
     u8 picking;
+    u8 pick_count;
     s32 timer;
     string blue_captain_name;
     string red_captain_name;
@@ -170,15 +170,45 @@ class CaptainsCore
         }
     }
 
-    void StartPickPhase(CRules@ rules, u8 new_first_pick_team)
+    void StartPickPhase(CRules@ rules, u8 first_pick_team)
     {
         if (isServer())
         {
             getNet().server_SendMsg("Entering pick phase. First pick: " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red"));
         }
-        SetTeams(rules);
+        
+        // End immediately if there are no players to pick from
         state = State::pick;
-        picking = new_first_pick_team;
+        picking = first_pick_team;
+        CheckEndPickPhase(rules, null);
+    }
+
+    void CheckEndPickPhase(CRules@ rules, CPlayer@ picked_player)
+    {
+        // End picking phase
+        u8 left_to_pick = CountPlayersInTeam(rules, rules.getSpectatorTeamNum(), picked_player);
+        if (left_to_pick > 1)
+        {
+            return;
+        }
+
+        if (isServer())
+        {
+            if (left_to_pick > 0)
+            {
+                for (int i = 0; i < getPlayerCount(); i++)
+                {
+                    CPlayer@ player = getPlayer(i);
+                    if (player !is null && player.getTeamNum() == rules.getSpectatorTeamNum() && !isNoPick(player.getUsername()))
+                    {
+                        ChangePlayerTeam(rules, player, picking);
+                        break;
+                    }
+                }
+            }
+            getNet().server_SendMsg("Exiting pick phase.");
+        }
+        state = State::none;
     }
 
     void SetTeams(CRules@ rules)
@@ -231,18 +261,13 @@ class CaptainsCore
     {
         if (rules !is null && player.getTeamNum() == rules.getSpectatorTeamNum() && !no_pick.exists(player.getUsername())) // Don't allow picking of players already on teams or nopick players
         {
+            print("PICKED PLAYER: " + player.getUsername());
             ChangePlayerTeam(rules, player, team);
 
-            // End picking phase
-            if (CountPlayersInTeam(rules.getSpectatorTeamNum()) == 0)
-            {
-                state = State::none;
-                return;
-            }
-
             // Set the team that's picking
-            u8 current_count = CountPlayersInTeam(team);
-            picking = current_count == 2 && team != first_pick_team ? team : Maths::Abs(team - 1);
+            pick_count++;
+            picking = pick_count == 2 ? team : Maths::Abs(team - 1);
+            CheckEndPickPhase(rules, player);
         }
     }
 
@@ -256,17 +281,27 @@ class CaptainsCore
         return nopick;
     }
 
-    int CountPlayersInTeam(int team)
+    int CountPlayersInTeam(CRules@ rules, int team, CPlayer@ picked_player)
     {
+        if (rules is null)
+        {
+            return 0;
+        }
+
         int count = 0;
         for (int i = 0; i < getPlayerCount(); i++)
         {
             CPlayer@ player = getPlayer(i);
-            if (player !is null && player.getTeamNum() == team && !isNoPick(player.getUsername()))
+            if (player !is null && player !is picked_player && player.getTeamNum() == team && !isNoPick(player.getUsername()))
             {
                 count++;
             }
         }
+        if (isClient() && team != rules.getSpectatorTeamNum() && picked_player !is null)
+        {
+            count++;
+        }
+
         return count;
     }
 
@@ -322,8 +357,8 @@ class CaptainsCore
 
         CBitStream params;
         params.write_u8(state);
-        params.write_u8(first_pick_team);
         params.write_u8(picking);
+        params.write_u8(pick_count);
         params.write_s32(timer);
         params.write_string(blue_captain_name);
         params.write_string(red_captain_name);
@@ -346,9 +381,6 @@ void button_onClick(int x, int y, int mouse_button, IGUIItem@ source)
 	Button@ button = cast<Button@>(source);
 	if(mouse_button == 1) // only on left click
 	{
-		CBitStream params;
-		params.write_string(button.desc);
-		CRules@ rules = getRules();
-		rules.SendCommand(rules.getCommandID(PICK_COMMAND), params);
+        client_SendChat("/pick " + button.desc, 0);
 	}
 }

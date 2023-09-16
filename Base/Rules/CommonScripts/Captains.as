@@ -5,7 +5,6 @@ void onInit(CRules@ this)
 {
     CaptainsReset(this);
 
-    this.addCommandID(PICK_COMMAND);
     this.addCommandID(NOPICK_COMMAND);
     this.addCommandID(CAPTAINS_CORE_SYNC_COMMAND);
 
@@ -23,7 +22,8 @@ void onRestart(CRules@ this)
 void CaptainsReset(CRules@ this)
 {
     CaptainsCore@ captains_core;
-    if (!this.exists(CAPTAINS_CORE))
+    this.get(CAPTAINS_CORE, @captains_core);
+    if (captains_core is null)
     {
         @captains_core = CaptainsCore();
         this.set(CAPTAINS_CORE, @captains_core);
@@ -73,7 +73,12 @@ void onPlayerLeave(CRules@ this, CPlayer@ player)
 
 void onRender(CRules@ this)
 {
-    
+    CaptainsCore@ captains_core;
+    this.get(CAPTAINS_CORE, @captains_core);
+    if (captains_core !is null)
+    {
+        captains_core.onRender(this);
+    }
 }
 
 void onPlayerDie(CRules@ this, CPlayer@ victim, CPlayer@ killer, u8 customData)
@@ -94,17 +99,8 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
     {
         return;
     }
-
-    if (isServer() && cmd == this.getCommandID(PICK_COMMAND))
-    {
-        string username = params.read_string();
-        CPlayer@ player = getPlayerByUsername(username);
-        if (player !is null)
-        {
-            captains_core.TryPickPlayer(this, player, captains_core.picking);
-        }
-    }
-    else if (cmd == this.getCommandID(NOPICK_COMMAND))
+    
+    if (cmd == this.getCommandID(NOPICK_COMMAND))
     {
         string username;
         if (!params.saferead_string(username))
@@ -128,11 +124,11 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
         {
             return;
         }
-        if (!params.saferead_u8(captains_core.first_pick_team))
+        if (!params.saferead_u8(captains_core.picking))
         {
             return;
         }
-        if (!params.saferead_u8(captains_core.picking))
+        if (!params.saferead_u8(captains_core.pick_count))
         {
             return;
         }
@@ -174,13 +170,10 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
 
 void onPlayerRequestTeamChange(CRules@ this, CPlayer@ player, u8 newteam)
 {
-    if (isServer())
+    CaptainsCore@ captains_core;
+    this.get(CAPTAINS_CORE, @captains_core);
+    if (captains_core !is null && captains_core.can_swap_teams)
     {
-        CaptainsCore@ captains_core;
-        this.get(CAPTAINS_CORE, @captains_core);
-        if (captains_core !is null && captains_core.can_swap_teams)
-        {
-            captains_core.ChangePlayerTeam(this, player, newteam);
-        }
+        captains_core.ChangePlayerTeam(this, player, newteam);
     }
 }
