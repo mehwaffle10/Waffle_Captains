@@ -5,7 +5,6 @@ void onInit(CRules@ this)
 {
     CaptainsReset(this);
 
-    this.addCommandID(NOPICK_COMMAND);
     this.addCommandID(CAPTAINS_CORE_SYNC_COMMAND);
 
     if (!GUI::isFontLoaded("Bigger Font"))
@@ -99,25 +98,7 @@ void onCommand(CRules@ this, u8 cmd, CBitStream @params)
     {
         return;
     }
-    
-    if (cmd == this.getCommandID(NOPICK_COMMAND))
-    {
-        string username;
-        if (!params.saferead_string(username))
-        {
-            return;
-        }
-
-        bool nopick;
-        if (!params.saferead_bool(nopick))
-        {
-            return;
-        }
-
-        captains_core.no_pick.set(username, nopick);
-        captains_core.UpdatePickWindow(null);
-    }
-    else if (cmd == this.getCommandID(CAPTAINS_CORE_SYNC_COMMAND))
+    if (cmd == this.getCommandID(CAPTAINS_CORE_SYNC_COMMAND))
     {
         // Sync normal variables
         if (!params.saferead_u8(captains_core.state))

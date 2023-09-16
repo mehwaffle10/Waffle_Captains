@@ -10,7 +10,6 @@ const SColor COLOR_RED(0xffff0000);
 const string CAPTAINS_CORE = "captains core";
 const string CAPTAINS_CORE_SYNC_COMMAND = "captains core sync";
 const string PICK_COMMAND = "pick";
-const string NOPICK_COMMAND = "nopick";
 const SColor NOPICK_COLOR = SColor(255, 150, 150, 150);
 
 const int BUTTON_WIDTH = 100;
