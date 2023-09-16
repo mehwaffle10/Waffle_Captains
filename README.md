@@ -5,6 +5,7 @@ A mod for orchestrating captains matches that is designed to be run with [Waffle
 - Players default to their last joined team when joining (spec for first join)
 - Toggle to disable swapping teams
 - Disable team autobalance
+- Disable AFK kick/force spec
 - User commands for quick swapping teams
 - Logic/UI for picking teams
 - Admin commands for orchestration
