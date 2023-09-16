@@ -25,8 +25,8 @@ Note: None of these will work if you are not an admin and team swapping is disab
 - `!nopick` - Swap yourself to spectator and prevent yourself from being picked by captains (your name will be greyed out). Use again or swap teams to toggle off
 
 ## Captain Commands
-- `!pick <player>` - Alternative to using the UI when picking players for your team
-- `!forfeit` - Forfeit during fight phase, giving the other captain first pick
+- `!pick <player>` - Alternative to using the UI when picking players for your team. Only usable in pick phase
+- `!forfeit` - Forfeit during fight phase, giving the other captain first pick. Only usable during fight phase
 
 ## Admin Commands
 Note: You can always execute these commands even if teams are locked or normal gameplay has not been reestablished

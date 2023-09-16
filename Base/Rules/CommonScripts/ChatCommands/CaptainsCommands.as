@@ -16,7 +16,7 @@ class CaptainsCommand : ChatCommand
 {
 	CaptainsCommand()
 	{
-		super("captains", "Start a captains fight. Disables team swapping and forces all other players to spec");
+		super("captains", "Start a captains fight. Places each captain on their team, forces all other players to spec, and prevents non-admin players from swapping teams");
         SetUsage("<blue captain name> <red captain name> [b|blue|0|r|red|1|random]");
 	}
 
@@ -66,7 +66,7 @@ class LockTeamsCommand : ChatCommand
 {
 	LockTeamsCommand()
 	{
-		super("lockteams", "Toggle whether teams are locked");
+		super("lockteams", "Toggle whether non-admin players can swap teams");
 	}
 
 	void Execute(string[] args, CPlayer@ player)
