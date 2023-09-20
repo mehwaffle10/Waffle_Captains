@@ -127,7 +127,7 @@ class PickCommand : ChatCommand
             CPlayer@ target = GetPlayerByIdent(args[0], player);
             if (target !is null)
             {
-                if (captains_core.isNoPick(target.getUsername()))
+                if (captains_core.no_pick.exists(target.getUsername()))
                 {
                     LocalError("You can't pick this player!", player);
                 }
@@ -200,7 +200,14 @@ class NoPickCommand : ChatCommand
 		if (captains_core !is null && (captains_core.can_swap_teams || player.isMod()))
         {
             string username = target.getUsername();
-            captains_core.no_pick.set(username, !captains_core.isNoPick(username));
+            if (captains_core.no_pick.exists(username))
+            {
+                captains_core.no_pick.delete(username);
+            }
+            else
+            {
+                captains_core.no_pick.set(username, true);
+            }
             captains_core.ChangePlayerTeam(rules, target, rules.getSpectatorTeamNum());
             captains_core.UpdatePickWindow(null);
         }

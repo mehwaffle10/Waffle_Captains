@@ -192,7 +192,7 @@ class CaptainsCore
         for (int i = 0; i < getPlayerCount(); i++)
         {
             CPlayer@ player = getPlayer(i);
-            if (player !is null && player !is picked_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !isNoPick(player.getUsername()))
+            if (player !is null && player !is picked_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !no_pick.exists(player.getUsername()))
             {
                 count++;
                 @last_pick = @player;
@@ -270,16 +270,6 @@ class CaptainsCore
         }
     }
 
-    bool isNoPick(string username)
-    {
-        bool nopick = false;
-        if (no_pick.exists(username))
-        {
-            no_pick.get(username, nopick);
-        }
-        return nopick;
-    }
-
     CPlayer@ getCaptain(int team)
     {
         return getPlayerByUsername(team == 0 ? blue_captain_name : red_captain_name);
@@ -292,7 +282,7 @@ class CaptainsCore
         for (int i = 0; i < getPlayerCount(); i++)
         {
             CPlayer@ player = getPlayer(i);
-            if (player !is null && player !is lost_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !isNoPick(player.getUsername()))
+            if (player !is null && player !is lost_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !no_pick.exists(player.getUsername()))
             {
                 player_names.push_back(player.getUsername());
             }
@@ -344,7 +334,7 @@ class CaptainsCore
         for (u8 i = 0; i < no_pick_players.length; i++)
         {
             params.write_string(no_pick_players[i]);
-            params.write_bool(isNoPick(no_pick_players[i]));
+            params.write_bool(no_pick.exists(no_pick_players[i]));
         }
 
         rules.SendCommand(rules.getCommandID(CAPTAINS_CORE_SYNC_COMMAND), params, player);
