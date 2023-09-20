@@ -47,6 +47,7 @@ class CaptainsCommand : ChatCommand
             return;
         }
 
+        captains_core.player_teams.deleteAll();
         captains_core.blue_captain_name = captain_blue.getUsername();
         captains_core.red_captain_name = captain_red.getUsername();
         captains_core.pick_count = 0;
@@ -121,13 +122,19 @@ class PickCommand : ChatCommand
             LocalError("You can only pick during pick phase!", player);
             return;
         }
-
         if (player is blue_captain && captains_core.picking == TEAM_BLUE || player is red_captain && captains_core.picking == TEAM_RED)
         {
             CPlayer@ target = GetPlayerByIdent(args[0], player);
             if (target !is null)
             {
-                captains_core.TryPickPlayer(rules, target, captains_core.picking);
+                if (captains_core.isNoPick(target.getUsername()))
+                {
+                    LocalError("You can't pick this player!", player);
+                }
+                else
+                {
+                    captains_core.TryPickPlayer(rules, target, captains_core.picking);
+                }
             }
         }
         else
@@ -195,6 +202,7 @@ class NoPickCommand : ChatCommand
             string username = target.getUsername();
             captains_core.no_pick.set(username, !captains_core.isNoPick(username));
             captains_core.ChangePlayerTeam(rules, target, rules.getSpectatorTeamNum());
+            captains_core.UpdatePickWindow(null);
         }
         else
         {
