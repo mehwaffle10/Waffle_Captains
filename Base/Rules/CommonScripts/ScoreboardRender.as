@@ -287,10 +287,11 @@ float drawScoreboard(CPlayer@ localplayer, CPlayer@[] players, Vec2f topleft, CT
 
 		//render the player + stats
         // Waffle: Change color for nopick players
+        string name = p.getUsername();
         CaptainsCore@ captains_core;
         getRules().get(CAPTAINS_CORE, @captains_core);
-        bool nopick = captains_core !is null ? captains_core.no_pick.exists(p.getUsername()) : false;
-        SColor namecolour = nopick ? NOPICK_COLOR : getNameColour(p);
+        bool nopick = captains_core !is null ? captains_core.no_pick.exists(name) : false;
+        SColor namecolour = nopick ? NOPICK_COLOR : captains_core !is null && (name == captains_core.blue_captain_name || name == captains_core.red_captain_name) ? CAPTAIN_COLOR : getNameColour(p);
 
 		//right align clantag
 		if (clantag != "")
