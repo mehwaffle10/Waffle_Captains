@@ -1,5 +1,10 @@
+
 #include "KGUI.as"
 #include "CTF_SharedClasses.as"
+#include "ApocalypseCommon.as"
+
+const u8 FIGHT_SECONDS = 90;  // Waffle: How long until sudden death triggers after fight phase
+const u8 COUNTDOWN_SECONDS = 3;  // Waffle: How long to countdown before fight phase
 
 const int TEAM_BLUE = 0;
 const int TEAM_RED  = 1;
@@ -24,6 +29,7 @@ namespace State
 	enum state_type
 	{
 		none = 0,
+        countdown,
 		fight,
 		pick
 	};
@@ -54,15 +60,28 @@ class CaptainsCore
 
     void onTick(CRules@ rules)
     {
-        if (state == State::fight && timer != 0)
-        {
-            s32 time_left = timer - getGameTime();
-            if (time_left <= 0)
+        if (timer != 0)
+        {   
+            if (state == State::countdown)  // Check to start fight
             {
-                timer = 0;
-
-                rules.SetCurrentState(GAME);
-                client_AddToChat("Fight for first pick!", CHAT_COLOR);
+                s32 time_left = timer - getGameTime();
+                if (time_left <= 0)
+                {
+                    state = State::fight;
+                    rules.SetCurrentState(GAME);
+                    timer = getGameTime() + FIGHT_SECONDS * getTicksASecond();
+                    client_AddToChat("Fight for first pick!", CHAT_COLOR);
+                }
+            }
+            else if (state == State::fight)  // Check to start sudden death
+            {
+                s32 time_left = timer - getGameTime();
+                if (time_left <= 0)
+                {
+                    timer = 0;
+                    StartApocalypse(rules);
+                    client_AddToChat("Sudden death!", CHAT_COLOR);
+                }
             }
         }
     }
@@ -98,9 +117,10 @@ class CaptainsCore
                 );   
             }
         }
-        else if (state == State::fight)
+        else if (state == State::countdown || state == State::fight)
         {
-            string msg = timer == 0 ? "Fight for first pick!" : ((timer - getGameTime()) / getTicksASecond() + 1) + " seconds until fight!";
+            s32 time_left = ((timer - getGameTime()) / getTicksASecond() + 1);
+            string msg = state == State::countdown ? time_left + " seconds until fight!" : time_left <= 0 ? "Sudden death!" : time_left <= 10 ? "Sudden death in " + time_left + " seconds!" : "Fight for first pick!";
 
             Vec2f Mid(getScreenWidth() / 2, getScreenHeight() * 0.2);
             Vec2f text_dims;
@@ -125,20 +145,43 @@ class CaptainsCore
 
     void onPlayerDie(CRules@ rules, CPlayer@ victim, CPlayer@ killer, u8 customData)
     {
-        if (state == State::fight && timer == 0)
+        if (state == State::fight)
         {
-            /*
-                ConsoleColour::CHATSPEC
-                ConsoleColour::CRAZY
-                ConsoleColour::ERROR
-                ConsoleColour::GAME
-                ConsoleColour::GENERIC
-                ConsoleColour::INFO
-                ConsoleColour::PRIVCHAT
-                ConsoleColour::RCON
-                CHAT_COLOR
-                ConsoleColour::WARNING
-            */
+            timer = 0;
+            if (isServer())
+            {
+                // Stop sudden death
+                rules.set_bool(APOCALYPSE_TOGGLE_STRING, false);
+
+                // Try to avoid people falling into the void constantly
+                CMap@ map = getMap();
+                CBlob@[] tents;
+                getBlobsByName("tent", @tents);
+                for (u8 i = 0; i < tents.length; i++)
+                {
+                    CBlob@ tent = tents[i];
+                    if (tent is null || map is null)
+                    {
+                        continue;
+                    }
+                    Vec2f pos = tent.getPosition();
+                    map.server_SetTile(pos, CMap::tile_ground_back);
+                    CBlob@ ladder = server_CreateBlob("ladder", -1, pos + Vec2f(0, -map.tilesize));
+                    if (ladder !is null)
+                    {
+                        ladder.Tag("invincible");
+                    }
+                    Vec2f mid = pos + Vec2f(0, tent.getHeight() / 2);
+                    for (s8 x = -2; x <= 2; x++)
+                    {
+                        Vec2f target = mid + Vec2f(x * map.tilesize, 0);
+                        if (!map.isTileSolid(target))
+                        {
+                            map.server_SetTile(target, CMap::tile_bedrock);
+                        }
+                    }
+                }
+            }
             u8 winning_team = Maths::Abs(victim.getTeamNum() - 1);
             client_AddToChat((winning_team == TEAM_BLUE ? blue_captain_name : red_captain_name) + " won the fight!", CHAT_COLOR);
             StartPickPhase(rules, winning_team);
@@ -170,14 +213,15 @@ class CaptainsCore
     {
         client_AddToChat("Entering fight phase", CHAT_COLOR);
         SetTeams(rules);
-        state = State::fight;
-        timer = getGameTime() + 3 * getTicksASecond();
+        state = State::countdown;
+        timer = getGameTime() + COUNTDOWN_SECONDS * getTicksASecond();
         can_swap_teams = false;
         client_AddToChat("Swapping teams is disabled", CHAT_COLOR);
     }
 
     void StartPickPhase(CRules@ rules, u8 first_pick_team)
     {
+        rules.set_bool(APOCALYPSE_TOGGLE_STRING, false);
         client_AddToChat("Entering pick phase. First pick: " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red"), CHAT_COLOR);
         // End immediately if there are no players to pick from
         state = State::pick;

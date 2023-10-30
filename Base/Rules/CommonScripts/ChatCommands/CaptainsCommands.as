@@ -166,7 +166,7 @@ class ForfeitCommand : ChatCommand
             LocalError("You can only forfeit as a captain!", player);
             return;
         }
-        if (captains_core.state != State::fight)
+        if (captains_core.state != State::countdown && captains_core.state != State::fight)
         {
             LocalError("You can only forfeit during fight phase!", player);
             return;
