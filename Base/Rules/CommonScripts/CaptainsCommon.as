@@ -287,6 +287,15 @@ class CaptainsCore
 
     void ChangePlayerTeam(CRules@ rules, CPlayer@ player, int team)
     {
+        if (player !is null)
+        {
+            CBlob@ blob = player.getBlob();
+            if (blob !is null)
+            {
+                blob.ClearMenus();
+            }
+        }
+
         if (!isServer() || rules is null || player is null)
         {
             return;
