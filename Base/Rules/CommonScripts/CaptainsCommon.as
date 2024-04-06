@@ -223,21 +223,25 @@ class CaptainsCore
     {
         rules.set_bool(APOCALYPSE_TOGGLE_STRING, false);
         client_AddToChat("Entering pick phase. First pick: " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red"), CHAT_COLOR);
+        SetTeams(rules);
         // End immediately if there are no players to pick from
         state = State::pick;
         picking = first_pick_team;
-        CheckEndPickPhase(rules, null);
+        CheckEndPickPhase(rules, null, true);
     }
 
-    void CheckEndPickPhase(CRules@ rules, CPlayer@ picked_player)
+    void CheckEndPickPhase(CRules@ rules, CPlayer@ picked_player, bool first_tick_check = false)
     {
         // Check how many people are left in spec
+        CPlayer@ blue_captain = getCaptain(0);
+        CPlayer@ red_captain = getCaptain(1);
+
         int count = 0;
         CPlayer@ last_pick;
         for (int i = 0; i < getPlayerCount(); i++)
         {
             CPlayer@ player = getPlayer(i);
-            if (player !is null && player !is picked_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !no_pick.exists(player.getUsername()))
+            if (player !is null && player !is picked_player && (first_tick_check ? player !is blue_captain && player !is red_captain : player.getTeamNum() == rules.getSpectatorTeamNum()) && !no_pick.exists(player.getUsername()))
             {
                 count++;
                 @last_pick = @player;

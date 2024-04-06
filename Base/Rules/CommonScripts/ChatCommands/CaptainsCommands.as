@@ -54,6 +54,7 @@ class CaptainsCommand : ChatCommand
 
         if (args.length >= 3 && (args[2] == "b" || args[2] == "blue" || args[2] == "0" || args[2] == "r" || args[2] == "red" || args[2] == "random"))
         {
+            client_AddToChat("Skipping fight phase!", CHAT_COLOR);
             captains_core.StartPickPhase(rules, (args[2] == "b" || args[2] == "blue" || args[2] == "0") ? TEAM_BLUE : (args[2] == "r" || args[2] == "red" || args[2] == "1") ? TEAM_RED : XORRandom(2));
         }
         else
