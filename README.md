@@ -12,7 +12,6 @@ A mod for orchestrating captains matches that is designed to be run with [Waffle
 - Player names find closest best match
 - Unable to capture flag during fight and pick phases
 - Scoreboard resets each match. Hold `shift` to see stats from previous match
-- Specators render as another team in scoreboard
 
 ## Game Flow
 An admin uses the `!captain` command to pick players as captains for both red and blue team, starting fight phase. Non-admin players are no longer allowed to swap teams. Players drop and can no longer pick up flags. The captains fight, entering pick phase when the first player dies. A random apocalypse will start if players take too long to die. When it is a captain's turn to pick, a GUI with player names will show in the upper left. All other players will see a title card showing whos turn it is to pick. The winner gets first pick. The loser then gets two picks. The winner then gets two picks. Each captain then takes turns picking players until none remain (snake draft), ending pick phase and returning to normal play. Next mapping will reset to normal play. Teams will continue to be locked forever, use the `!lockteams` command to unlock teams.
