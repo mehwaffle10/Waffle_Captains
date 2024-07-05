@@ -245,9 +245,7 @@ class CaptainsCore
                 remaining.push_back(player);
             }
         }
-
-        print("remaining.length: " + remaining.length + " pick_count: " + pick_count);
-
+        
         if (!(remaining.length <= 1 || remaining.length == 2 && (pick_count == 1 || pick_count == 3)))
         {
             return;
