@@ -236,25 +236,29 @@ class CaptainsCore
         CPlayer@ blue_captain = getCaptain(0);
         CPlayer@ red_captain = getCaptain(1);
 
-        int count = 0;
-        CPlayer@ last_pick;
+        CPlayer@[] remaining;
         for (int i = 0; i < getPlayerCount(); i++)
         {
             CPlayer@ player = getPlayer(i);
             if (player !is null && player !is picked_player && (first_tick_check ? player !is blue_captain && player !is red_captain : player.getTeamNum() == rules.getSpectatorTeamNum()) && !no_pick.exists(player.getUsername()))
             {
-                count++;
-                @last_pick = @player;
+                remaining.push_back(player);
             }
         }
-        if (count > 1)
+
+        print("remaining.length: " + remaining.length + " pick_count: " + pick_count);
+
+        if (!(remaining.length <= 1 || remaining.length == 2 && (pick_count == 1 || pick_count == 3)))
         {
             return;
         }
 
-        if (isServer() && last_pick !is null)
+        if (isServer())
         {
-            ChangePlayerTeam(rules, last_pick, picking);
+            for (u8 i = 0; i < remaining.length; i++)
+            {
+                ChangePlayerTeam(rules, remaining[i], picking);
+            }
         }
         client_AddToChat("Exiting pick phase.", CHAT_COLOR);
         state = State::none;
