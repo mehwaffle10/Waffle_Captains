@@ -115,28 +115,43 @@ class PickCommand : ChatCommand
         }
         if (args.length < 1)
         {
-            LocalError("You must specify a player!", player);
+            LocalError("You must specify a player or team!", player);
             return;
         }
-        if (captains_core.state != State::pick)
+        if (captains_core.state != State::pick && captains_core.state != State::win)
         {
-            LocalError("You can only pick during pick phase!", player);
+            LocalError("You can only pick during pick or win phase!", player);
             return;
         }
         if (player is blue_captain && captains_core.picking == TEAM_BLUE || player is red_captain && captains_core.picking == TEAM_RED)
         {
-            CPlayer@ target = GetPlayerByIdent(args[0], player);
-            if (target !is null)
-            {
-                if (captains_core.no_pick.exists(target.getUsername()))
-                {
-                    LocalError("You can't pick this player!", player);
-                }
-                else
-                {
-                    captains_core.TryPickPlayer(rules, target, captains_core.picking);
-                }
-            }
+			if (captains_core.state == State::pick)
+			{
+				CPlayer@ target = GetPlayerByIdent(args[0], player);
+				if (target !is null)
+				{
+					if (captains_core.no_pick.exists(target.getUsername()))
+					{
+						LocalError("You can't pick this player!", player);
+					}
+					else
+					{
+						captains_core.TryPickPlayer(rules, target, captains_core.picking);
+					}
+				}
+			}
+			else
+			{
+				string value = args[0];
+				if (value == "y" || value == "ye" || value == "yes")
+				{
+					captains_core.StartPickPhase(rules, player.getTeamNum());
+				}
+				else if (value == "n" || value == "no")
+				{
+					captains_core.StartPickPhase(rules, Maths::Abs(player.getTeamNum() - 1));
+				}
+			}
         }
         else
         {
@@ -172,7 +187,7 @@ class ForfeitCommand : ChatCommand
             LocalError("You can only forfeit during fight phase!", player);
             return;
         }
-		captains_core.StartPickPhase(getRules(), Maths::Abs(player.getTeamNum() - 1));
+		captains_core.StartWinPhase(getRules(), Maths::Abs(player.getTeamNum() - 1));
 	}
 }
 

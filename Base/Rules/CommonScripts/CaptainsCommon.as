@@ -31,6 +31,7 @@ namespace State
 		none = 0,
         countdown,
 		fight,
+		win,
 		pick
 	};
 };
@@ -70,7 +71,7 @@ class CaptainsCore
                     state = State::fight;
                     rules.SetCurrentState(GAME);
                     timer = getGameTime() + FIGHT_SECONDS * getTicksASecond();
-                    client_AddToChat("Fight for first pick!", CHAT_COLOR);
+                    client_AddToChat("Fight to decide who picks first!", CHAT_COLOR);
                 }
             }
             else if (state == State::fight)  // Check to start sudden death
@@ -88,11 +89,31 @@ class CaptainsCore
 
     void onRender(CRules@ rules)
     {
-        if (state == State::pick)
+        if (state == State::pick || state == State::win)
         {
             CPlayer@ captain = getCaptain(picking);
             if (captain !is null && getLocalPlayer() is captain)
             {
+				// Draw info card
+                string msg = state == State::pick ? "Pick a player" : "Do you want first pick?";
+                Vec2f text_dims;
+                GUI::SetFont("menu");
+                GUI::GetTextDimensions(msg, text_dims);
+				u16 width = GRID_COLUMNS * BUTTON_WIDTH;
+				u8 padding = 6;
+				u8 height = text_dims.y + padding * 2;
+				Vec2f top_left = pick_window.position - Vec2f(0, height);
+				Vec2f bottom_right = top_left + Vec2f(width, height);
+                GUI::DrawPane(
+                    top_left,
+                    bottom_right
+                );
+                GUI::DrawTextCentered(
+                    msg,
+                    top_left + (bottom_right - top_left) / 2,
+                    picking == TEAM_BLUE ? COLOR_BLUE : COLOR_RED
+                );
+
                 // Draw pick menu
                 pick_window.draw();
             }
@@ -102,7 +123,7 @@ class CaptainsCore
                 Vec2f top_left(100,200);
                 Vec2f padding(6, 6);
                 Vec2f end_padding(6, 0);
-                string msg = (captain !is null ? captain.getUsername() : "Captain") + " is picking for " + (picking == TEAM_BLUE ? "blue" : "red") + " team";
+                string msg = (captain !is null ? captain.getUsername() : "Captain") + " is picking " + (state == State::pick ? "for " + (picking == TEAM_BLUE ? "blue" : "red") + " team" : "which team picks first");
                 Vec2f text_dims;
                 GUI::SetFont("menu");
                 GUI::GetTextDimensions(msg, text_dims);
@@ -120,7 +141,7 @@ class CaptainsCore
         else if (state == State::countdown || state == State::fight)
         {
             s32 time_left = ((timer - getGameTime()) / getTicksASecond() + 1);
-            string msg = state == State::countdown ? time_left + " seconds until fight!" : time_left <= 0 ? "Sudden death!" : time_left <= 10 ? "Sudden death in " + time_left + " seconds!" : "Fight for first pick!";
+            string msg = state == State::countdown ? time_left + " seconds until fight!" : time_left <= 0 ? "Sudden death!" : time_left <= 10 ? "Sudden death in " + time_left + " seconds!" : "Fight to decide who picks first!";
 
             Vec2f Mid(getScreenWidth() / 2, getScreenHeight() * 0.2);
             Vec2f text_dims;
@@ -184,7 +205,7 @@ class CaptainsCore
             }
             u8 winning_team = Maths::Abs(victim.getTeamNum() - 1);
             client_AddToChat((winning_team == TEAM_BLUE ? blue_captain_name : red_captain_name) + " won the fight!", CHAT_COLOR);
-            StartPickPhase(rules, winning_team);
+            StartWinPhase(rules, winning_team);
         }
     }
 
@@ -219,6 +240,16 @@ class CaptainsCore
         client_AddToChat("Swapping teams is disabled", CHAT_COLOR);
     }
 
+	void StartWinPhase(CRules@ rules, u8 first_pick_team)
+    {
+        rules.set_bool(APOCALYPSE_TOGGLE_STRING, false);
+        client_AddToChat("Entering win phase. " + (first_pick_team == TEAM_BLUE ? "Blue" : "Red") + " captain will pick which team picks first", CHAT_COLOR);
+        SetTeams(rules);
+        state = State::win;
+        picking = first_pick_team;
+		UpdatePickWindow(null);
+    }
+
     void StartPickPhase(CRules@ rules, u8 first_pick_team)
     {
         rules.set_bool(APOCALYPSE_TOGGLE_STRING, false);
@@ -227,6 +258,7 @@ class CaptainsCore
         // End immediately if there are no players to pick from
         state = State::pick;
         picking = first_pick_team;
+		UpdatePickWindow(null);
         CheckEndPickPhase(rules, null, true);
     }
 
@@ -338,17 +370,25 @@ class CaptainsCore
     void UpdatePickWindow(CPlayer@ lost_player)
     {
         CRules@ rules = getRules();
-        string[] player_names;
-        for (int i = 0; i < getPlayerCount(); i++)
-        {
-            CPlayer@ player = getPlayer(i);
-            if (player !is null && player !is lost_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !no_pick.exists(player.getUsername()))
-            {
-                player_names.push_back(player.getUsername());
-            }
-        }
+        string[] button_names;
+		if (state == State::pick)
+		{
+			for (int i = 0; i < getPlayerCount(); i++)
+			{
+				CPlayer@ player = getPlayer(i);
+				if (player !is null && player !is lost_player && player.getTeamNum() == rules.getSpectatorTeamNum() && !no_pick.exists(player.getUsername()))
+				{
+					button_names.push_back(player.getUsername());
+				}
+			}
+		}
+		else
+		{
+			button_names.push_back("Yes");
+			button_names.push_back("No");
+		}
 
-        int button_count = player_names.size();
+        int button_count = button_names.size();
         int grid_rows = (button_count - 1) / 2 + 1;
         int window_width = GRID_COLUMNS * BUTTON_WIDTH;
         int window_height = grid_rows * BUTTON_HEIGHT;
@@ -364,11 +404,12 @@ class CaptainsCore
             Button button = Button(
                 Vec2f(button_x, button_y),
                 Vec2f(BUTTON_WIDTH, BUTTON_HEIGHT),
-                player_names[i],
+                button_names[i],
                 SColor(255, 255, 255, 255)
             );
             
             button.addClickListener(button_onClick);
+			button.addHoverStateListener(button_onHover);
             pick_window.addChild(button);
         }
     }
@@ -404,8 +445,14 @@ class CaptainsCore
 void button_onClick(int x, int y, int mouse_button, IGUIItem@ source)
 {
 	Button@ button = cast<Button@>(source);
-	if(mouse_button == 1) // only on left click
+	if (mouse_button == 1) // only on left click
 	{
+		Sound::Play("buttonclick.ogg");
         client_SendChat("/pick " + button.desc, 0);
 	}
+}
+
+void button_onHover(bool isHovered, IGUIItem@ source)
+{
+	Sound::Play("select.ogg");
 }

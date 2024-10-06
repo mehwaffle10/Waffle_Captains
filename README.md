@@ -14,7 +14,7 @@ A mod for orchestrating captains matches that is designed to be run with [Waffle
 - Scoreboard resets each match. Hold `shift` to see stats from previous match
 
 ## Game Flow
-An admin uses the `!captain` command to pick players as captains for both red and blue team, starting fight phase. Non-admin players are no longer allowed to swap teams. Players drop and can no longer pick up flags. The captains fight, entering pick phase when the first player dies. A random apocalypse will start if players take too long to die. When it is a captain's turn to pick, a GUI with player names will show in the upper left. All other players will see a title card showing whos turn it is to pick. The winner gets first pick. The loser then gets two picks. The winner then gets two picks. Each captain then takes turns picking players until none remain (snake draft), ending pick phase and returning to normal play. Next mapping will reset to normal play. Teams will continue to be locked forever, use the `!lockteams` command to unlock teams.
+An admin uses the `!captain` command to pick players as captains for both red and blue team, starting fight phase. Non-admin players are no longer allowed to swap teams. Players drop and can no longer pick up flags. The captains fight, entering win phase when the first player dies. A random apocalypse will start if players take too long to die. The player who wins fight phase will be given a card to choose if they want first pick or not. When it is a captain's turn to pick, a GUI with player names will show in the upper left. All other players will see a title card showing whos turn it is to pick. First pick gets one pick. Second pick then gets two picks. First pick then gets two picks. Each captain then takes turns picking players until none remain (snake draft), ending pick phase and returning to normal play. Next mapping will reset to normal play. Teams will continue to be locked forever, use the `!lockteams` command to unlock teams.
 
 # Commands
 ## User Commands
@@ -26,7 +26,8 @@ Note: None of these will work if you are not an admin and team swapping is disab
 
 ## Captain Commands
 - `!pick <player>` - Alternative to using the UI when picking players for your team. Only usable in pick phase
-- `!forfeit` - Forfeit during fight phase, giving the other captain first pick. Only usable during fight phase
+- `!pick [y|ye|yes|n|no]` - Alternative to using the UI when picking if you want to have first pick or not. Only usable in win phase
+- `!forfeit` - Forfeit during fight phase, giving the other captain the decision for first pick. Only usable during fight phase
 
 ## Admin Commands
 Note: You can always execute these commands even if teams are locked or normal gameplay has not been reestablished
